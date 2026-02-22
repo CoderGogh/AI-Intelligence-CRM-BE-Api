@@ -137,24 +137,25 @@ http://localhost:15601
     - 문서 작업 브랜치
 
 ### 예시    
-배포 
-
-Ex) main
-
-개발 브랜치(merge 용도 + 버전 기록)
-
-Ex) develop
-
-Ex) 커밋 컨밴션 : v1, v2, v3 등 버전 기록
-
-개별 기능 개발 브랜치
-
-feat/{feature_name}   
-Ex) feat/post   
-Ex) feat/consult   
-Ex) feat/jira에 등록된 기능 이름   
+- **배포**
+    - 개발 브랜치(merge 용도 + 버전 기록)
+    - Ex) main
+- **develop**
+    - 개발 브랜치
+    - Ex) develoop
+- feat/{feature-name}
+    - 추가 기능 개발 브랜치, 추후 develop 브랜치로 병합
+    - Ex) feat/users   
+    - Ex) feat/consult   
+    - Ex) feat/jira에 등록된 기능 이름 
+- hotfix/
+    - develop 브랜치에서 발생한 버그 수정하는 브랜치
+- docs/
+    - 문서 작업 브랜치
 
 ---
+
+# Commit Convention
 
 ### Type 종류
 
@@ -171,6 +172,6 @@ Ex) feat/jira에 등록된 기능 이름
 
 ### 예시
 
-Ex) feat/추가한사람이름/패키지위치/설명   
-Ex) fix/추가한사람이름/패키지위치/설명   
-Ex) build/추가한사람이름/패키지위치/설명   
+- Ex) feat/추가한사람이름/패키지위치/설명   
+- Ex) fix/추가한사람이름/패키지위치/설명   
+- Ex) build/추가한사람이름/패키지위치/설명   
