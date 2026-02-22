@@ -121,7 +121,8 @@ http://localhost:15601
 ```
 
 ---
-#Github Convention
+# Github Convention
+
 ### 브랜치 종류
 
 - **main**
@@ -137,17 +138,21 @@ http://localhost:15601
 
 ### 예시    
 배포 
+
 Ex) main
 
 개발 브랜치(merge 용도 + 버전 기록)
+
 Ex) develop
+
 Ex) 커밋 컨밴션 : v1, v2, v3 등 버전 기록
 
 개별 기능 개발 브랜치
-feat/{feature_name}
-Ex) feat/post
-Ex) feat/consult
-Ex) feat/jira에 등록된 기능 이름
+
+feat/{feature_name}   
+Ex) feat/post   
+Ex) feat/consult   
+Ex) feat/jira에 등록된 기능 이름   
 
 ---
 
@@ -165,6 +170,7 @@ Ex) feat/jira에 등록된 기능 이름
 - release : 버전 릴리즈
 
 ### 예시
-Ex) feat/추가한사람이름/패키지위치/설명
-Ex) fix/추가한사람이름/패키지위치/설명
-Ex) build/추가한사람이름/패키지위치/설명
+
+Ex) feat/추가한사람이름/패키지위치/설명   
+Ex) fix/추가한사람이름/패키지위치/설명   
+Ex) build/추가한사람이름/패키지위치/설명   
