@@ -1,6 +1,6 @@
 spring:
   application:
-    name: crm
+    name: crm-test
 
   datasource:
     url: jdbc:mysql://localhost:13306/crm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
@@ -29,39 +29,24 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
-    baseline-on-migrate: false
+    baseline-on-migrate: true
     validate-on-migrate: true
     clean-disabled: true
 
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
+    show-sql: false
 
 server:
   port: 8080
 
-logging:
-  level:
-    org.flywaydb: DEBUG
-    org.springframework.jdbc: DEBUG
-    com.zaxxer.hikari: DEBUG
-
-# Google OAuth 설정
-# 로컬 개발: 기본값 사용 (환경변수 없이 실행 가능)
-# 프로덕션: 환경변수로 실제 값 설정
 google:
   oauth:
-    client-id: ${GOOGLE_CLIENT_ID:local-dev-google-client-id}
-    client-secret: ${GOOGLE_CLIENT_SECRET:local-dev-google-client-secret}
+    client-id: test-client-id
+    client-secret: test-client-secret
 
-# JWT 설정
-# 로컬 개발: 기본값 사용 (환경변수 없이 실행 가능)
-# 프로덕션: 환경변수로 실제 값 설정
 jwt:
-  secret: ${JWT_SECRET:ureca4-crm-local-dev-jwt-secret-key-32chars!!}
+  secret: test-jwt-secret-key-for-testing-purposes-32chars
   access-token-expire-ms: 3600000
   refresh-token-expire-ms: 604800000

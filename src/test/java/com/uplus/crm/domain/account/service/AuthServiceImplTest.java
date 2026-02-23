@@ -1,5 +1,8 @@
 package com.uplus.crm.domain.account.service;
 
+import com.uplus.crm.common.exception.BusinessException;
+import com.uplus.crm.common.exception.ErrorCode;
+import com.uplus.crm.common.util.CookieUtil;
 import com.uplus.crm.common.util.GoogleOAuthUtil;
 import com.uplus.crm.common.util.JwtUtil;
 import com.uplus.crm.domain.account.dto.request.GoogleAuthRequestDto;
@@ -15,7 +18,6 @@ import com.uplus.crm.domain.account.entity.RefreshToken;
 import com.uplus.crm.domain.account.repository.mysql.EmployeeRepository;
 import com.uplus.crm.domain.account.repository.mysql.RefreshTokenRepository;
 import com.uplus.crm.domain.account.service.impl.AuthServiceImpl;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +47,7 @@ class AuthServiceImplTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private GoogleOAuthUtil googleOAuthUtil;
     @Mock private JwtUtil jwtUtil;
+    @Mock private CookieUtil cookieUtil;
     @Mock private HttpServletRequest httpRequest;
     @Mock private HttpServletResponse httpResponse;
 
@@ -93,9 +96,9 @@ class AuthServiceImplTest {
 
         // then
         assertThat(response.getAccessToken()).isEqualTo("accessToken");
-        assertThat(response.getRefreshToken()).isEqualTo("refreshToken");
         assertThat(response.getIsNewUser()).isFalse();
         assertThat(response.getExpiredAt()).isNotNull();
+        then(cookieUtil).should().setRefreshTokenCookie(eq(httpResponse), eq("refreshToken"));
     }
 
     @Test
@@ -114,8 +117,11 @@ class AuthServiceImplTest {
 
         // when & then
         assertThatThrownBy(() -> authService.googleLogin(request, httpResponse))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("연동된 계정이 없습니다.");
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException be = (BusinessException) e;
+                    assertThat(be.getErrorCode()).isEqualTo(ErrorCode.ACCOUNT_NOT_LINKED);
+                });
     }
 
     // ─────────────────────────────────────────────
@@ -149,8 +155,8 @@ class AuthServiceImplTest {
 
         // then
         assertThat(response.getAccessToken()).isEqualTo("accessToken");
-        assertThat(response.getRefreshToken()).isEqualTo("refreshToken");
         assertThat(response.getExpiredAt()).isNotNull();
+        then(cookieUtil).should().setRefreshTokenCookie(eq(httpResponse), eq("refreshToken"));
     }
 
     @Test
@@ -167,8 +173,11 @@ class AuthServiceImplTest {
 
         // when & then
         assertThatThrownBy(() -> authService.login(request, httpResponse))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("아이디 또는 비밀번호가 올바르지 않습니다.");
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException be = (BusinessException) e;
+                    assertThat(be.getErrorCode()).isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+                });
     }
 
     @Test
@@ -187,8 +196,11 @@ class AuthServiceImplTest {
 
         // when & then
         assertThatThrownBy(() -> authService.login(request, httpResponse))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("아이디 또는 비밀번호가 올바르지 않습니다.");
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException be = (BusinessException) e;
+                    assertThat(be.getErrorCode()).isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+                });
     }
 
     // ─────────────────────────────────────────────
@@ -199,8 +211,8 @@ class AuthServiceImplTest {
     @DisplayName("로그아웃 성공")
     void logout_success() {
         // given
-        Cookie[] cookies = {new Cookie("refreshToken", "validRefreshToken")};
-        given(httpRequest.getCookies()).willReturn(cookies);
+        given(cookieUtil.extractRefreshToken(httpRequest))
+                .willReturn(Optional.of("validRefreshToken"));
 
         // when
         LogoutResponseDto response = authService.logout(httpRequest, httpResponse);
@@ -208,31 +220,23 @@ class AuthServiceImplTest {
         // then
         assertThat(response.getMessage()).isEqualTo("로그아웃 되었습니다.");
         then(refreshTokenRepository).should().deleteByRefreshToken("validRefreshToken");
+        then(cookieUtil).should().clearRefreshTokenCookie(httpResponse);
     }
 
     @Test
     @DisplayName("로그아웃 실패 - 쿠키 없음")
     void logout_fail_noCookie() {
         // given
-        given(httpRequest.getCookies()).willReturn(null);
+        given(cookieUtil.extractRefreshToken(httpRequest))
+                .willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> authService.logout(httpRequest, httpResponse))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Refresh Token이 없습니다.");
-    }
-
-    @Test
-    @DisplayName("로그아웃 실패 - refreshToken 쿠키 없음")
-    void logout_fail_noRefreshTokenCookie() {
-        // given
-        Cookie[] cookies = {new Cookie("otherCookie", "someValue")};
-        given(httpRequest.getCookies()).willReturn(cookies);
-
-        // when & then
-        assertThatThrownBy(() -> authService.logout(httpRequest, httpResponse))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Refresh Token이 없습니다.");
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException be = (BusinessException) e;
+                    assertThat(be.getErrorCode()).isEqualTo(ErrorCode.MISSING_TOKEN);
+                });
     }
 
     // ─────────────────────────────────────────────
@@ -243,8 +247,8 @@ class AuthServiceImplTest {
     @DisplayName("토큰 갱신 성공")
     void refresh_success() {
         // given
-        Cookie[] cookies = {new Cookie("refreshToken", "validRefreshToken")};
-        given(httpRequest.getCookies()).willReturn(cookies);
+        given(cookieUtil.extractRefreshToken(httpRequest))
+                .willReturn(Optional.of("validRefreshToken"));
 
         RefreshToken mockRefreshToken = RefreshToken.builder()
                 .refreshTokenId(1)
@@ -270,32 +274,35 @@ class AuthServiceImplTest {
 
         // then
         assertThat(response.getAccessToken()).isEqualTo("newAccessToken");
-        assertThat(response.getRefreshToken()).isEqualTo("newRefreshToken");
         assertThat(response.getExpiredAt()).isNotNull();
+        then(cookieUtil).should().setRefreshTokenCookie(eq(httpResponse), eq("newRefreshToken"));
     }
 
     @Test
     @DisplayName("토큰 갱신 실패 - 유효하지 않은 Refresh Token")
     void refresh_fail_invalidToken() {
         // given
-        Cookie[] cookies = {new Cookie("refreshToken", "invalidToken")};
-        given(httpRequest.getCookies()).willReturn(cookies);
+        given(cookieUtil.extractRefreshToken(httpRequest))
+                .willReturn(Optional.of("invalidToken"));
 
         given(refreshTokenRepository.findByRefreshToken("invalidToken"))
                 .willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> authService.refresh(httpRequest, httpResponse))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("유효하지 않은 Refresh Token입니다.");
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException be = (BusinessException) e;
+                    assertThat(be.getErrorCode()).isEqualTo(ErrorCode.INVALID_TOKEN);
+                });
     }
 
     @Test
     @DisplayName("토큰 갱신 실패 - 만료된 Refresh Token")
     void refresh_fail_expiredToken() {
         // given
-        Cookie[] cookies = {new Cookie("refreshToken", "expiredToken")};
-        given(httpRequest.getCookies()).willReturn(cookies);
+        given(cookieUtil.extractRefreshToken(httpRequest))
+                .willReturn(Optional.of("expiredToken"));
 
         RefreshToken expiredToken = RefreshToken.builder()
                 .refreshTokenId(1)
@@ -310,8 +317,11 @@ class AuthServiceImplTest {
 
         // when & then
         assertThatThrownBy(() -> authService.refresh(httpRequest, httpResponse))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Refresh Token이 만료되었습니다.");
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException be = (BusinessException) e;
+                    assertThat(be.getErrorCode()).isEqualTo(ErrorCode.EXPIRED_TOKEN);
+                });
     }
 
     // ─────────────────────────────────────────────
@@ -357,8 +367,11 @@ class AuthServiceImplTest {
 
         // when & then
         assertThatThrownBy(() -> authService.changePassword(999, request))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("직원 정보를 찾을 수 없습니다.");
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException be = (BusinessException) e;
+                    assertThat(be.getErrorCode()).isEqualTo(ErrorCode.EMPLOYEE_NOT_FOUND);
+                });
     }
 
     @Test
@@ -378,8 +391,11 @@ class AuthServiceImplTest {
 
         // when & then
         assertThatThrownBy(() -> authService.changePassword(1, request))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("현재 비밀번호가 일치하지 않습니다.");
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException be = (BusinessException) e;
+                    assertThat(be.getErrorCode()).isEqualTo(ErrorCode.INVALID_CURRENT_PASSWORD);
+                });
     }
 
     @Test
@@ -399,7 +415,10 @@ class AuthServiceImplTest {
 
         // when & then
         assertThatThrownBy(() -> authService.changePassword(1, request))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("새 비밀번호와 확인 비밀번호가 일치하지 않습니다.");
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException be = (BusinessException) e;
+                    assertThat(be.getErrorCode()).isEqualTo(ErrorCode.PASSWORD_MISMATCH);
+                });
     }
 }

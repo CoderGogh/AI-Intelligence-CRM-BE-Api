@@ -15,8 +15,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -39,9 +39,8 @@ public class AuthController {
     })
     @PostMapping("/google")
     public ResponseEntity<GoogleAuthResponseDto> googleLogin(
-            @RequestBody GoogleAuthRequestDto request,
+            @Valid @RequestBody GoogleAuthRequestDto request,
             HttpServletResponse response) {
-
         return ResponseEntity.ok(authService.googleLogin(request, response));
     }
 
@@ -54,9 +53,8 @@ public class AuthController {
     })
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDto> login(
-            @RequestBody LoginRequestDto request,
+            @Valid @RequestBody LoginRequestDto request,
             HttpServletResponse response) {
-
         return ResponseEntity.ok(authService.login(request, response));
     }
 
@@ -70,7 +68,6 @@ public class AuthController {
     public ResponseEntity<LogoutResponseDto> logout(
             HttpServletRequest request,
             HttpServletResponse response) {
-
         return ResponseEntity.ok(authService.logout(request, response));
     }
 
@@ -84,7 +81,6 @@ public class AuthController {
     public ResponseEntity<TokenRefreshResponseDto> refresh(
             HttpServletRequest request,
             HttpServletResponse response) {
-
         return ResponseEntity.ok(authService.refresh(request, response));
     }
 
@@ -98,8 +94,7 @@ public class AuthController {
     @PutMapping("/me/password")
     public ResponseEntity<PasswordChangeResponseDto> changePassword(
             @AuthenticationPrincipal Integer empId,
-            @RequestBody PasswordChangeRequestDto request) {
-
+            @Valid @RequestBody PasswordChangeRequestDto request) {
         return ResponseEntity.ok(authService.changePassword(empId, request));
     }
 }

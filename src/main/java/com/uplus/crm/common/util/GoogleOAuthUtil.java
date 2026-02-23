@@ -6,11 +6,15 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleTokenResponse;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.uplus.crm.common.config.GoogleOAuthConfig;
+import com.uplus.crm.common.exception.BusinessException;
+import com.uplus.crm.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class GoogleOAuthUtil {
@@ -19,7 +23,6 @@ public class GoogleOAuthUtil {
 
     public String getEmailFromAuthCode(String authorizationCode, String redirectUri) {
         try {
-            // 1. Authorization Code로 Token 요청
             GoogleTokenResponse tokenResponse = new GoogleAuthorizationCodeTokenRequest(
                     new NetHttpTransport(),
                     GsonFactory.getDefaultInstance(),
@@ -29,14 +32,12 @@ public class GoogleOAuthUtil {
                     redirectUri
             ).execute();
 
-            // 2. ID Token에서 이메일 추출
             GoogleIdToken idToken = tokenResponse.parseIdToken();
-            GoogleIdToken.Payload payload = idToken.getPayload();
-
-            return payload.getEmail();
+            return idToken.getPayload().getEmail();
 
         } catch (IOException e) {
-            throw new RuntimeException("Google OAuth 인증 실패: " + e.getMessage());
+            log.error("Google OAuth 인증 실패: {}", e.getMessage());
+            throw new BusinessException(ErrorCode.GOOGLE_AUTH_FAILED);
         }
     }
 }
