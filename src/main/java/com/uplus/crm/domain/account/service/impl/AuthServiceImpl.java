@@ -1,6 +1,7 @@
 package com.uplus.crm.domain.account.service.impl;
 
 import com.uplus.crm.common.util.GoogleOAuthUtil;
+import com.uplus.crm.common.util.JwtUtil;
 import com.uplus.crm.domain.account.dto.request.GoogleAuthRequestDto;
 import com.uplus.crm.domain.account.dto.request.LoginRequestDto;
 import com.uplus.crm.domain.account.dto.request.PasswordChangeRequestDto;
@@ -33,6 +34,7 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final GoogleOAuthUtil googleOAuthUtil;
+    private final JwtUtil jwtUtil;
 
     // ─────────────────────────────────────────────
     // POST /auth/google
@@ -51,10 +53,10 @@ public class AuthServiceImpl implements AuthService {
         // 3. 토큰 발급
         String accessToken = generateAccessToken(employee);
         String newRefreshToken = generateRefreshToken(employee);
-        LocalDateTime expiredAt = LocalDateTime.now().plusHours(1);
+        LocalDateTime expiredAt = jwtUtil.getAccessTokenExpiredAt();
 
         // 4. Refresh Token 저장
-        saveRefreshToken(employee, newRefreshToken, expiredAt.plusDays(7));
+        saveRefreshToken(employee, newRefreshToken, jwtUtil.getRefreshTokenExpiredAt());
 
         // 5. HttpOnly Cookie에 Refresh Token 세팅
         setRefreshTokenCookie(response, newRefreshToken);
@@ -86,11 +88,11 @@ public class AuthServiceImpl implements AuthService {
         // 3. 토큰 발급
         String accessToken = generateAccessToken(employee);
         String newRefreshToken = generateRefreshToken(employee);
-        LocalDateTime expiredAt = LocalDateTime.now().plusHours(1);
+        LocalDateTime expiredAt = jwtUtil.getAccessTokenExpiredAt();
 
         // 4. 기존 Refresh Token 삭제 후 새로 저장
         refreshTokenRepository.deleteByEmployee_EmpId(employee.getEmpId());
-        saveRefreshToken(employee, newRefreshToken, expiredAt.plusDays(7));
+        saveRefreshToken(employee, newRefreshToken, jwtUtil.getRefreshTokenExpiredAt());
 
         // 5. HttpOnly Cookie에 Refresh Token 세팅
         setRefreshTokenCookie(response, newRefreshToken);
@@ -141,15 +143,15 @@ public class AuthServiceImpl implements AuthService {
             throw new RuntimeException("Refresh Token이 만료되었습니다.");
         }
 
-        // 3. 새 토큰 발급 (Refresh Token Rotation)
+        // 3. 새 토큰 발급 (Refresh Token)
         Employee employee = tokenEntity.getEmployee();
         String newAccessToken = generateAccessToken(employee);
         String newRefreshToken = generateRefreshToken(employee);
-        LocalDateTime expiredAt = LocalDateTime.now().plusHours(1);
+        LocalDateTime expiredAt = jwtUtil.getAccessTokenExpiredAt();
 
         // 4. 기존 Refresh Token 삭제 후 새로 저장
         refreshTokenRepository.delete(tokenEntity);
-        saveRefreshToken(employee, newRefreshToken, expiredAt.plusDays(7));
+        saveRefreshToken(employee, newRefreshToken, jwtUtil.getRefreshTokenExpiredAt());
 
         // 5. HttpOnly Cookie 갱신
         setRefreshTokenCookie(response, newRefreshToken);
@@ -191,7 +193,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // ─────────────────────────────────────────────
-    // Private 헬퍼 메서드
+    // Private 헬퍼 추가 메서드
     // ─────────────────────────────────────────────
 
     private String extractEmailFromGoogle(String authorizationCode, String redirectUri) {
@@ -199,13 +201,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private String generateAccessToken(Employee employee) {
-        // TODO: JWT 생성 로직 구현 필요
-        return "access_token_" + employee.getEmpId();
+        return jwtUtil.generateAccessToken(employee.getEmpId(), employee.getLoginId());
     }
 
     private String generateRefreshToken(Employee employee) {
-        // TODO: JWT or UUID 기반 Refresh Token 생성 로직 구현 필요
-        return "refresh_token_" + employee.getEmpId();
+        return jwtUtil.generateRefreshToken(employee.getEmpId());
     }
 
     private void saveRefreshToken(Employee employee, String token, LocalDateTime expiredAt) {
