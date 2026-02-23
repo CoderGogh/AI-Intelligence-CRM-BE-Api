@@ -1,4 +1,4 @@
-package com.uplus.crm.common.dto;
+package com.uplus.crm.common.common_dto;
 
 public class ex {
 }
