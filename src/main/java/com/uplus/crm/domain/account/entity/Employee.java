@@ -44,12 +44,16 @@ public class Employee {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-    
+
     public void updateAccountInfo(String name, String email, String phone, LocalDate birth, String gender) {
         this.name = name;
         this.email = email;
         this.phone = phone;
         this.birth = birth;
         this.gender = gender;
+    }
+
+    public void updatePassword(String encodedPassword) {
+        this.password = encodedPassword;
     }
 }
