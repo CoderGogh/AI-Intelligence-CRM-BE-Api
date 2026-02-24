@@ -3,8 +3,14 @@ package com.uplus.crm.domain.account.repository.mysql;
 import com.uplus.crm.domain.account.entity.Employee;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
+
 public interface EmployeeRepository extends JpaRepository<Employee, Integer> {
 
-    // 수정 시 본인(empId) 제외하고 이메일 중복 체크
+    Optional<Employee> findByLoginId(String loginId);
+
+    Optional<Employee> findByEmail(String email);
     boolean existsByEmailAndEmpIdNot(String email, Integer empId);
+    boolean existsByEmail(String email);
 }
+
