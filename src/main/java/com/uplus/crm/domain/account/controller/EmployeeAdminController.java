@@ -28,7 +28,7 @@ public class EmployeeAdminController {
   /** 2. 직원 개별 권한 편집 */
   @PutMapping("/{empId}/permissions")
   public EmployeePermissionUpdateResponseDto updateEmployeePermissions(
-      @PathVariable Long empId,
+      @PathVariable Integer empId,
       @RequestBody EmployeePermissionUpdateRequestDto request
   ) {
     return employeeService.updateEmployeePermissions(empId, request);
@@ -37,7 +37,7 @@ public class EmployeeAdminController {
   /** 3. 직원 계정 활성화 / 비활성화 */
   @PatchMapping("/{empId}/status")
   public EmployeeStatusUpdateResponseDto updateEmployeeStatus(
-      @PathVariable Long empId,
+      @PathVariable Integer empId,
       @RequestBody EmployeeStatusUpdateRequestDto request
   ) {
     return employeeService.updateEmployeeStatus(empId, request);

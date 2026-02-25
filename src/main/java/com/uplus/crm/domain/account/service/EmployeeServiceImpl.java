@@ -114,7 +114,7 @@ public class EmployeeServiceImpl implements EmployeeService{
    * 2. 직원 개별 권한 편집 (전체 교체)
    */
   @Override
-  public EmployeePermissionUpdateResponseDto updateEmployeePermissions(Long empId,
+  public EmployeePermissionUpdateResponseDto updateEmployeePermissions(Integer empId,
       EmployeePermissionUpdateRequestDto request) {
 
     Employee employee = employeeRepository.findById(empId)
@@ -177,7 +177,7 @@ public class EmployeeServiceImpl implements EmployeeService{
 
   /** 3. 직원 계정 활성화 / 비활성화 */
   @Override
-  public EmployeeStatusUpdateResponseDto updateEmployeeStatus(Long empId,
+  public EmployeeStatusUpdateResponseDto updateEmployeeStatus(Integer empId,
       EmployeeStatusUpdateRequestDto request) {
         Employee employee = employeeRepository.findById(empId)
             .orElseThrow(() -> new IllegalArgumentException("해당 직원이 존재하지 않습니다."));

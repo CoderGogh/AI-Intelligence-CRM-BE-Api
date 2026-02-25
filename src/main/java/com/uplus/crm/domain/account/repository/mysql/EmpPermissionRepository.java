@@ -13,7 +13,7 @@ public interface EmpPermissionRepository extends JpaRepository<EmpPermission, Lo
   List<EmpPermission> findByEmployee_EmpIdAndIsDeletedFalse(Long empId);
 
   // 특정 직원 권한 전체 삭제 (soft delete 대신 물리삭제 쓸 수도 있음)
-  void deleteByEmployee_EmpId(Long empId);
+  void deleteByEmployee_EmpId(Integer empId);
 
   @Modifying
   @Query("""
@@ -22,5 +22,5 @@ public interface EmpPermissionRepository extends JpaRepository<EmpPermission, Lo
      WHERE ep.employee.empId = :empId
        AND ep.isDeleted = false
 """)
-  void softDeleteByEmployeeId(@Param("empId") Long empId);
+  void softDeleteByEmployeeId(@Param("empId") Integer empId);
 }

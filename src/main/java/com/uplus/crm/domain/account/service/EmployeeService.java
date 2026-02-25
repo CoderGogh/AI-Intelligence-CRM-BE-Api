@@ -11,12 +11,12 @@ public interface EmployeeService {
   EmployeeCreateResponseDto createEmployee(EmployeeCreateRequestDto request);
 
   EmployeePermissionUpdateResponseDto updateEmployeePermissions(
-      Long empId,
+      Integer empId,
       EmployeePermissionUpdateRequestDto request
   );
 
   EmployeeStatusUpdateResponseDto updateEmployeeStatus(
-      Long empId,
+      Integer empId,
       EmployeeStatusUpdateRequestDto request
   );
 }
