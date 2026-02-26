@@ -1,9 +1,11 @@
 package com.uplus.crm.domain.account.repository.mysql;
 
 import com.uplus.crm.domain.account.entity.Employee;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,6 +20,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer> {
     Optional<Employee> findByEmail(String email);
 
     boolean existsByEmail(String email);
+
+    boolean existsByLoginId(String loginId);
+
 
     // --- 2. 어드민 계정 관리: 검색 및 페이징 (HEAD) ---
     
@@ -50,4 +55,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer> {
            "JOIN FETCH ed.jobRole j " +
            "WHERE e.empId = :empId")
     Optional<Employee> findByIdWithDetails(@Param("empId") Integer empId);
+
+    
 }
+

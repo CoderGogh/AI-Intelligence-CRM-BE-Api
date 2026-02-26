@@ -24,6 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+
     private final JwtUtil jwtUtil;
 
     @Bean
@@ -52,6 +53,7 @@ public class SecurityConfig {
                 
                 // 그 외 모든 요청(예: /auth/me)은 인증(토큰)이 있어야만 접근 가능
                 .anyRequest().authenticated()
+
             )
             // JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 추가하여 토큰 검증
             .addFilterBefore(new JwtAuthFilter(jwtUtil),
