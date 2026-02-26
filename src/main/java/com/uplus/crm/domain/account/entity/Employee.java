@@ -45,6 +45,9 @@ public class Employee {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @OneToOne(mappedBy = "employee", fetch = FetchType.LAZY)
+    private EmployeeDetail employeeDetail;
+
     public void updateAccountInfo(String name, String email, String phone, LocalDate birth, String gender) {
         this.name = name;
         this.email = email;

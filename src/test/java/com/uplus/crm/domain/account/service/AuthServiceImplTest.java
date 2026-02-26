@@ -7,14 +7,18 @@ import com.uplus.crm.common.util.GoogleOAuthUtil;
 import com.uplus.crm.common.util.JwtUtil;
 import com.uplus.crm.domain.account.dto.request.GoogleAuthRequestDto;
 import com.uplus.crm.domain.account.dto.request.LoginRequestDto;
+import com.uplus.crm.domain.account.dto.request.MyInfoUpdateRequestDto;
 import com.uplus.crm.domain.account.dto.request.PasswordChangeRequestDto;
 import com.uplus.crm.domain.account.dto.response.GoogleAuthResponseDto;
 import com.uplus.crm.domain.account.dto.response.LoginResponseDto;
 import com.uplus.crm.domain.account.dto.response.LogoutResponseDto;
+import com.uplus.crm.domain.account.dto.response.MyInfoUpdateResponseDto;
 import com.uplus.crm.domain.account.dto.response.PasswordChangeResponseDto;
 import com.uplus.crm.domain.account.dto.response.TokenRefreshResponseDto;
 import com.uplus.crm.domain.account.entity.Employee;
 import com.uplus.crm.domain.account.entity.RefreshToken;
+import com.uplus.crm.domain.account.repository.mysql.DeptPermissionRepository;
+import com.uplus.crm.domain.account.repository.mysql.EmpPermissionRepository;
 import com.uplus.crm.domain.account.repository.mysql.EmployeeRepository;
 import com.uplus.crm.domain.account.repository.mysql.RefreshTokenRepository;
 import com.uplus.crm.domain.account.service.impl.AuthServiceImpl;
@@ -23,6 +27,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -30,6 +35,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -45,6 +51,8 @@ class AuthServiceImplTest {
 
     @Mock private EmployeeRepository employeeRepository;
     @Mock private RefreshTokenRepository refreshTokenRepository;
+    @Mock private DeptPermissionRepository deptPermissionRepository;
+    @Mock private EmpPermissionRepository empPermissionRepository;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private GoogleOAuthUtil googleOAuthUtil;
     @Mock private JwtUtil jwtUtil;
@@ -78,10 +86,9 @@ class AuthServiceImplTest {
                 .authorizationCode("auth_code_123")
                 .redirectUri("https://localhost:3000/callback")
                 .build();
-/*
+
         given(googleOAuthUtil.getEmailFromAuthCode(any(), any()))
-                .willReturn("hong@lgup.com");*/
-        
+                .willReturn("hong@lgup.com");
         given(employeeRepository.findByEmail("hong@lgup.com"))
                 .willReturn(Optional.of(mockEmployee));
         given(jwtUtil.generateAccessToken(any(), any()))
@@ -111,11 +118,9 @@ class AuthServiceImplTest {
                 .authorizationCode("auth_code_123")
                 .redirectUri("https://localhost:3000/callback")
                 .build();
-/*
+
         given(googleOAuthUtil.getEmailFromAuthCode(any(), any()))
                 .willReturn("unknown@lgup.com");
-                */
-        
         given(employeeRepository.findByEmail("unknown@lgup.com"))
                 .willReturn(Optional.empty());
 
@@ -288,7 +293,6 @@ class AuthServiceImplTest {
         // given
         given(cookieUtil.extractRefreshToken(httpRequest))
                 .willReturn(Optional.of("invalidToken"));
-
         given(refreshTokenRepository.findByRefreshToken("invalidToken"))
                 .willReturn(Optional.empty());
 
@@ -424,5 +428,151 @@ class AuthServiceImplTest {
                     BusinessException be = (BusinessException) e;
                     assertThat(be.getErrorCode()).isEqualTo(ErrorCode.PASSWORD_MISMATCH);
                 });
+    }
+
+    // ─────────────────────────────────────────────
+    // PUT /auth/me
+    // ─────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("PUT /auth/me - 내 정보 수정")
+    class UpdateMyInfo {
+
+        @Test
+        @DisplayName("성공 - 모든 필드 수정")
+        void success_allFields() {
+            // given
+            MyInfoUpdateRequestDto req = MyInfoUpdateRequestDto.builder()
+                    .name("김철수")
+                    .email("new@lgup.com")
+                    .phone("010-1234-5678")
+                    .birth("1990-05-15")
+                    .gender("M")
+                    .build();
+
+            given(employeeRepository.findById(1)).willReturn(Optional.of(mockEmployee));
+            given(employeeRepository.existsByEmailAndEmpIdNot("new@lgup.com", 1)).willReturn(false);
+
+            // when
+            MyInfoUpdateResponseDto res = authService.updateMyInfo(1, req);
+
+            // then
+            assertThat(res.getEmpId()).isEqualTo(1);
+            assertThat(res.getName()).isEqualTo("김철수");
+            assertThat(res.getEmail()).isEqualTo("new@lgup.com");
+            assertThat(res.getPhone()).isEqualTo("010-1234-5678");
+            assertThat(res.getBirth()).isEqualTo("1990-05-15");
+            assertThat(res.getGender()).isEqualTo("M");
+        }
+
+        @Test
+        @DisplayName("성공 - 선택 필드 null 허용")
+        void success_nullableFieldsOmitted() {
+            // given
+            MyInfoUpdateRequestDto req = MyInfoUpdateRequestDto.builder()
+                    .name("홍길동")
+                    .email("hong@lgup.com")
+                    .build();
+
+            given(employeeRepository.findById(1)).willReturn(Optional.of(mockEmployee));
+            given(employeeRepository.existsByEmailAndEmpIdNot("hong@lgup.com", 1)).willReturn(false);
+
+            // when
+            MyInfoUpdateResponseDto res = authService.updateMyInfo(1, req);
+
+            // then
+            assertThat(res.getName()).isEqualTo("홍길동");
+            assertThat(res.getEmail()).isEqualTo("hong@lgup.com");
+            assertThat(res.getBirth()).isNull();
+            assertThat(res.getPhone()).isNull();
+        }
+
+        @Test
+        @DisplayName("실패 - 요청 본문 null")
+        void fail_nullRequest() {
+            assertThatThrownBy(() -> authService.updateMyInfo(1, null))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.INVALID_INPUT));
+        }
+
+        @Test
+        @DisplayName("실패 - 이름 blank")
+        void fail_blankName() {
+            MyInfoUpdateRequestDto req = MyInfoUpdateRequestDto.builder()
+                    .name("   ")
+                    .email("hong@lgup.com")
+                    .build();
+
+            assertThatThrownBy(() -> authService.updateMyInfo(1, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.INVALID_INPUT));
+        }
+
+        @Test
+        @DisplayName("실패 - 이메일 blank")
+        void fail_blankEmail() {
+            MyInfoUpdateRequestDto req = MyInfoUpdateRequestDto.builder()
+                    .name("홍길동")
+                    .email("")
+                    .build();
+
+            assertThatThrownBy(() -> authService.updateMyInfo(1, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.INVALID_INPUT));
+        }
+
+        @Test
+        @DisplayName("실패 - 직원 존재하지 않음")
+        void fail_employeeNotFound() {
+            MyInfoUpdateRequestDto req = MyInfoUpdateRequestDto.builder()
+                    .name("홍길동")
+                    .email("hong@lgup.com")
+                    .build();
+
+            given(employeeRepository.findById(999)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> authService.updateMyInfo(999, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.EMPLOYEE_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("실패 - 이메일 중복 (본인 제외 다른 직원)")
+        void fail_emailDuplicate() {
+            MyInfoUpdateRequestDto req = MyInfoUpdateRequestDto.builder()
+                    .name("홍길동")
+                    .email("taken@lgup.com")
+                    .build();
+
+            given(employeeRepository.findById(1)).willReturn(Optional.of(mockEmployee));
+            given(employeeRepository.existsByEmailAndEmpIdNot("taken@lgup.com", 1)).willReturn(true);
+
+            assertThatThrownBy(() -> authService.updateMyInfo(1, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.EMAIL_DUPLICATE));
+        }
+
+        @Test
+        @DisplayName("실패 - 생년월일 형식 오류")
+        void fail_invalidBirthFormat() {
+            MyInfoUpdateRequestDto req = MyInfoUpdateRequestDto.builder()
+                    .name("홍길동")
+                    .email("hong@lgup.com")
+                    .birth("1990/05/15")
+                    .build();
+
+            given(employeeRepository.findById(1)).willReturn(Optional.of(mockEmployee));
+            given(employeeRepository.existsByEmailAndEmpIdNot("hong@lgup.com", 1)).willReturn(false);
+
+            assertThatThrownBy(() -> authService.updateMyInfo(1, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.INVALID_INPUT));
+        }
     }
 }

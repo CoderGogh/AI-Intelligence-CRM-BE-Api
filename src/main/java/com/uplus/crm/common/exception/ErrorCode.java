@@ -19,9 +19,17 @@ public enum ErrorCode {
     EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "토큰이 만료되었습니다."),
     MISSING_TOKEN(HttpStatus.UNAUTHORIZED, "토큰이 존재하지 않습니다."),
 
+    // 403 Forbidden
+    FORBIDDEN_ACCESS(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
+
     // 404 Not Found
     EMPLOYEE_NOT_FOUND(HttpStatus.NOT_FOUND, "직원 정보를 찾을 수 없습니다."),
     ACCOUNT_NOT_LINKED(HttpStatus.NOT_FOUND, "연동된 계정이 없습니다."),
+    FILTER_GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "필터 그룹을 찾을 수 없습니다."),
+    FILTER_NOT_FOUND(HttpStatus.NOT_FOUND, "유효하지 않은 필터입니다."),
+
+    // 409 Conflict
+    EMAIL_DUPLICATE(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
 
     // 500 Internal Server Error
     GOOGLE_AUTH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "Google OAuth 인증에 실패했습니다.");

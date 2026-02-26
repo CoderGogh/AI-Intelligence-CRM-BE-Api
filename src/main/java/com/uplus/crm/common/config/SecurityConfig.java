@@ -5,6 +5,7 @@ import com.uplus.crm.common.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -16,6 +17,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -23,6 +25,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
+    private final Environment environment;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -43,10 +46,12 @@ public class SecurityConfig {
                 ).permitAll()
                 .anyRequest().authenticated()
             )
-            // ✅ JWT 인증 필터
-            .addFilterBefore(new JwtAuthFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class)
-            // ✅ EmpIdAuthFilter가 필요하면 유지 (JWT 다음에 돌게)
-            .addFilterAfter(new EmpIdAuthFilter(), JwtAuthFilter.class);
+            .addFilterBefore(new JwtAuthFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
+
+        // EmpIdAuthFilter는 local 프로파일에서만 활성화 (개발 편의용)
+        if (Arrays.asList(environment.getActiveProfiles()).contains("local")) {
+            http.addFilterAfter(new EmpIdAuthFilter(), JwtAuthFilter.class);
+        }
 
         return http.build();
     }

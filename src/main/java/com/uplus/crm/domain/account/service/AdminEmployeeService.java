@@ -2,11 +2,11 @@ package com.uplus.crm.domain.account.service;
 
 import java.time.LocalDate;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
+import com.uplus.crm.common.exception.BusinessException;
+import com.uplus.crm.common.exception.ErrorCode;
 import com.uplus.crm.domain.account.dto.request.AdminEmployeeUpdateRequestDto;
 import com.uplus.crm.domain.account.dto.response.AdminEmployeeUpdateResponseDto;
 import com.uplus.crm.domain.account.entity.Department;
@@ -32,30 +32,30 @@ public class AdminEmployeeService {
     @Transactional
     public AdminEmployeeUpdateResponseDto updateEmployee(Integer empId, AdminEmployeeUpdateRequestDto req) {
 
-        // ✅ 0) 필수 파라미터 검증 (400)
+        // 0) 필수 파라미터 검증 (400)
         if (req == null
                 || isBlank(req.getName())
                 || isBlank(req.getEmail())
                 || req.getDeptId() == null
                 || req.getJobRoleId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "파라미터 오류");
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
 
         // 1) 직원 존재 확인 (404)
         Employee employee = employeeRepository.findById(empId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 직원 없음"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.EMPLOYEE_NOT_FOUND));
 
-        // 2) 이메일 중복 체크 (409) - 필수값 검증을 했으니 안전
+        // 2) 이메일 중복 체크 (409)
         if (employeeRepository.existsByEmailAndEmpIdNot(req.getEmail(), empId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "이메일 중복");
+            throw new BusinessException(ErrorCode.EMAIL_DUPLICATE);
         }
 
         // 3) 부서/역할 존재 확인 (400)
         Department dept = departmentRepository.findById(req.getDeptId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "부서 ID 오류"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT));
 
         JobRole role = jobRoleRepository.findById(req.getJobRoleId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "역할 ID 오류"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT));
 
         // 4) 문자열 날짜 파싱 (nullable) + 포맷 틀리면 400
         LocalDate birth = parseLocalDateOrNull(req.getBirth());
@@ -102,7 +102,7 @@ public class AdminEmployeeService {
         try {
             return LocalDate.parse(value); // "yyyy-MM-dd"
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "날짜 형식 오류 (yyyy-MM-dd)");
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
     }
 

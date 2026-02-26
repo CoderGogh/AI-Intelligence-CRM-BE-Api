@@ -2,6 +2,9 @@ package com.uplus.crm.domain.account.service.impl;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,14 +19,12 @@ import com.uplus.crm.domain.account.dto.request.GoogleAuthRequestDto;
 import com.uplus.crm.domain.account.dto.request.LoginRequestDto;
 import com.uplus.crm.domain.account.dto.request.MyInfoUpdateRequestDto;
 import com.uplus.crm.domain.account.dto.request.PasswordChangeRequestDto;
-import com.uplus.crm.domain.account.dto.response.GoogleAuthResponseDto;
-import com.uplus.crm.domain.account.dto.response.LoginResponseDto;
-import com.uplus.crm.domain.account.dto.response.LogoutResponseDto;
-import com.uplus.crm.domain.account.dto.response.MyInfoUpdateResponseDto;
-import com.uplus.crm.domain.account.dto.response.PasswordChangeResponseDto;
-import com.uplus.crm.domain.account.dto.response.TokenRefreshResponseDto;
+import com.uplus.crm.domain.account.dto.response.*;
 import com.uplus.crm.domain.account.entity.Employee;
+import com.uplus.crm.domain.account.entity.EmployeeDetail;
 import com.uplus.crm.domain.account.entity.RefreshToken;
+import com.uplus.crm.domain.account.repository.mysql.DeptPermissionRepository;
+import com.uplus.crm.domain.account.repository.mysql.EmpPermissionRepository;
 import com.uplus.crm.domain.account.repository.mysql.EmployeeRepository;
 import com.uplus.crm.domain.account.repository.mysql.RefreshTokenRepository;
 import com.uplus.crm.domain.account.service.AuthService;
@@ -39,15 +40,79 @@ public class AuthServiceImpl implements AuthService {
 
     private final EmployeeRepository employeeRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final DeptPermissionRepository deptPermissionRepository;
+    private final EmpPermissionRepository empPermissionRepository;
     private final PasswordEncoder passwordEncoder;
     private final GoogleOAuthUtil googleOAuthUtil;
     private final JwtUtil jwtUtil;
     private final CookieUtil cookieUtil;
 
+    // --- 구글 이메일 중복 확인 ---
+    @Override
+    public EmailCheckResponseDto checkEmailAvailability(String email) {
+        boolean isDuplicate = employeeRepository.existsByEmail(email);
+        return EmailCheckResponseDto.builder()
+                .available(!isDuplicate)
+                .email(email)
+                .build();
+    }
+
+    // --- 로그인한 계정 정보 조회 ---
+    @Override
+    public MyInfoResponseDto getMyInfo(Integer empId) {
+        Employee employee = employeeRepository.findByIdWithDetails(empId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.EMPLOYEE_NOT_FOUND));
+
+        EmployeeDetail detail = employee.getEmployeeDetail();
+        Set<String> allPermissions = new HashSet<>();
+
+        if (detail != null && detail.getDepartment() != null) {
+            allPermissions.addAll(deptPermissionRepository.findPermCodesByDeptId(detail.getDepartment().getDeptId()));
+        }
+        allPermissions.addAll(empPermissionRepository.findPermCodesByEmpId(empId));
+
+        return convertToMyInfoDto(employee, allPermissions);
+    }
+
+    // --- 내 정보 수정 ---
+    @Override
+    @Transactional
+    public MyInfoUpdateResponseDto updateMyInfo(Integer empId, MyInfoUpdateRequestDto req) {
+        if (req == null || isBlank(req.getName()) || isBlank(req.getEmail())) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
+        Employee employee = employeeRepository.findById(empId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.EMPLOYEE_NOT_FOUND));
+
+        if (employeeRepository.existsByEmailAndEmpIdNot(req.getEmail(), empId)) {
+            throw new BusinessException(ErrorCode.EMAIL_DUPLICATE);
+        }
+
+        LocalDate birth = parseLocalDateOrNull(req.getBirth());
+
+        employee.updateAccountInfo(
+                req.getName(),
+                req.getEmail(),
+                req.getPhone(),
+                birth,
+                req.getGender()
+        );
+
+        return MyInfoUpdateResponseDto.builder()
+                .empId(employee.getEmpId())
+                .name(employee.getName())
+                .email(employee.getEmail())
+                .phone(employee.getPhone())
+                .birth(employee.getBirth() == null ? null : employee.getBirth().toString())
+                .gender(employee.getGender())
+                .build();
+    }
+
     @Override
     @Transactional
     public GoogleAuthResponseDto googleLogin(GoogleAuthRequestDto request, HttpServletResponse response) {
-       String email = googleOAuthUtil.getEmailFromAuthCode(
+        String email = googleOAuthUtil.getEmailFromAuthCode(
                 request.getAuthorizationCode(),
                 request.getRedirectUri()
         );
@@ -58,7 +123,6 @@ public class AuthServiceImpl implements AuthService {
         return issueTokensAndRespond(employee, response, true);
     }
 
-    
     @Override
     @Transactional
     public LoginResponseDto login(LoginRequestDto request, HttpServletResponse response) {
@@ -134,56 +198,35 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
-    // ✅ 추가: PUT /auth/me (내 정보 수정)
-    @Override
-    @Transactional
-    public MyInfoUpdateResponseDto updateMyInfo(Integer empId, MyInfoUpdateRequestDto req) {
-
-        // 파라미터 최소 검증 (원하면 더 강화 가능)
-        if (req == null || isBlank(req.getName()) || isBlank(req.getEmail())) {
-            // 너희 ErrorCode에 "파라미터 오류"가 뭐가 있는지 몰라서 일단 INVALID_TOKEN 말고,
-            // 일반적으로 쓰는 INVALID_CREDENTIALS를 쓰면 의미가 안 맞음.
-            // 여기서는 EMPLOYEE_NOT_FOUND 같은 걸 쓰면 더 이상하고…
-            // => 가능하면 ErrorCode에 INVALID_PARAMETER 같은 게 있으면 그걸로 바꿔줘.
-            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
-        }
-
-        Employee employee = employeeRepository.findById(empId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.EMPLOYEE_NOT_FOUND));
-
-        // 이메일 중복(본인 제외)
-        if (employeeRepository.existsByEmailAndEmpIdNot(req.getEmail(), empId)) {
-            // ErrorCode에 이메일 중복 코드가 있으면 그걸로 바꾸는게 제일 좋음
-            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
-        }
-
-        LocalDate birth = parseLocalDateOrNull(req.getBirth());
-
-        employee.updateAccountInfo(
-                req.getName(),
-                req.getEmail(),
-                req.getPhone(),
-                birth,
-                req.getGender()
-        );
-
-        return MyInfoUpdateResponseDto.builder()
-                .empId(employee.getEmpId())
-                .name(employee.getName())
-                .email(employee.getEmail())
-                .phone(employee.getPhone())
-                .birth(employee.getBirth() == null ? null : employee.getBirth().toString())
-                .gender(employee.getGender())
-                .build();
-    }
-
     // ─────────────────────────────────────────────
     // Private 헬퍼 메서드
     // ─────────────────────────────────────────────
 
+    private MyInfoResponseDto convertToMyInfoDto(Employee e, Set<String> perms) {
+        EmployeeDetail d = e.getEmployeeDetail();
+
+        return MyInfoResponseDto.builder()
+                .empId(e.getEmpId())
+                .loginId(e.getLoginId())
+                .name(e.getName())
+                .email(e.getEmail())
+                .phone(e.getPhone())
+                .birth(e.getBirth() != null ? e.getBirth().toString() : null)
+                .gender(e.getGender())
+                .isActive(e.getIsActive())
+                .createdAt(e.getCreatedAt())
+                .deptId(d != null ? d.getDepartment().getDeptId() : null)
+                .deptName(d != null ? d.getDepartment().getDeptName() : null)
+                .jobRoleId(d != null ? d.getJobRole().getJobRoleId() : null)
+                .roleName(d != null ? d.getJobRole().getRoleName() : null)
+                .joinedAt(d != null && d.getJoinedAt() != null ? d.getJoinedAt().toString() : null)
+                .permissions(new ArrayList<>(perms))
+                .build();
+    }
+
     private GoogleAuthResponseDto issueTokensAndRespond(Employee employee,
-                                                       HttpServletResponse response,
-                                                       boolean deleteExisting) {
+                                                        HttpServletResponse response,
+                                                        boolean deleteExisting) {
         if (deleteExisting) {
             refreshTokenRepository.deleteByEmployee_EmpId(employee.getEmpId());
         }
@@ -217,10 +260,9 @@ public class AuthServiceImpl implements AuthService {
     private LocalDate parseLocalDateOrNull(String value) {
         if (value == null || value.isBlank()) return null;
         try {
-            return LocalDate.parse(value); // yyyy-MM-dd
+            return LocalDate.parse(value);
         } catch (Exception e) {
-            // 날짜 형식 에러도 ErrorCode가 있으면 그걸로 교체 추천
-            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
     }
 

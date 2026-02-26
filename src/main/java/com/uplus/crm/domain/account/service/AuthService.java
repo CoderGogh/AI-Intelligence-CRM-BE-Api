@@ -1,15 +1,10 @@
 package com.uplus.crm.domain.account.service;
+
 import com.uplus.crm.domain.account.dto.request.GoogleAuthRequestDto;
 import com.uplus.crm.domain.account.dto.request.LoginRequestDto;
 import com.uplus.crm.domain.account.dto.request.MyInfoUpdateRequestDto;
 import com.uplus.crm.domain.account.dto.request.PasswordChangeRequestDto;
-
-import com.uplus.crm.domain.account.dto.response.GoogleAuthResponseDto;
-import com.uplus.crm.domain.account.dto.response.LoginResponseDto;
-import com.uplus.crm.domain.account.dto.response.LogoutResponseDto;
-import com.uplus.crm.domain.account.dto.response.MyInfoUpdateResponseDto;
-import com.uplus.crm.domain.account.dto.response.PasswordChangeResponseDto;
-import com.uplus.crm.domain.account.dto.response.TokenRefreshResponseDto;
+import com.uplus.crm.domain.account.dto.response.*;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,6 +21,9 @@ public interface AuthService {
 
     PasswordChangeResponseDto changePassword(Integer empId, PasswordChangeRequestDto request);
 
-    // ✅ 네 기능 추가 (PUT /auth/me)
+    EmailCheckResponseDto checkEmailAvailability(String email);
+
+    MyInfoResponseDto getMyInfo(Integer empId);
+
     MyInfoUpdateResponseDto updateMyInfo(Integer empId, MyInfoUpdateRequestDto req);
 }
