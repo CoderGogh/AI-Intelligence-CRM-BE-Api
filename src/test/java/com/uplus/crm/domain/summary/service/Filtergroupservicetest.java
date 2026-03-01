@@ -403,7 +403,7 @@ class FilterGroupServiceTest {
     // Private 헬퍼 메서드
     // ─────────────────────────────────────────────
 
-    private Filter createFilter(Integer id, String key, String altCode, String name) {
+    private Filter createFilter(Integer id, String key, String name) {
         Filter filter;
         try {
             var constructor = Filter.class.getDeclaredConstructor();
@@ -414,7 +414,6 @@ class FilterGroupServiceTest {
         }
         ReflectionTestUtils.setField(filter, "filterId", id);
         ReflectionTestUtils.setField(filter, "filterKey", key);
-        ReflectionTestUtils.setField(filter, "altCode", altCode);
         ReflectionTestUtils.setField(filter, "filterName", name);
         return filter;
     }
