@@ -1,16 +1,22 @@
 -- V13__update_filter_table_and_seed_data.sql
+-- 주의: alt_code 컬럼 제거는 이전 실행에서 이미 완료됨.
+--       filter_custom, filter_groups의 FK 제약을 위해 FK 체크 비활성화 후 데이터 재적재.
 
--- 1. alt_code 컬럼 제거
-ALTER TABLE filter
-DROP COLUMN alt_code;
+-- FK 체크 비활성화 (filter_custom -> filter FK 충돌 방지)
+SET FOREIGN_KEY_CHECKS = 0;
 
--- 2. 데이터 삭제 (FK 문제 없음)
+-- 데이터 삭제
+DELETE FROM filter_custom;
+DELETE FROM filter_groups;
 DELETE FROM filter;
 
 -- AUTO_INCREMENT 초기화
 ALTER TABLE filter AUTO_INCREMENT = 1;
 
--- 3. 재적재
+-- FK 체크 재활성화
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- 재적재
 INSERT INTO filter (filter_id, filter_key, filter_name) VALUES
 (1,  'keyword',         '키워드'),
 (2,  'consult_from',    '상담 시작일'),

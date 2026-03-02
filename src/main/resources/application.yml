@@ -25,6 +25,11 @@ spring:
     producer:
       acks: all
 
+  task:
+    scheduling:
+      pool:
+        size: 3
+
 server:
   port: 8080
   servlet:

@@ -29,6 +29,8 @@ logging:
     org.flywaydb: DEBUG
     org.springframework.jdbc: DEBUG
     com.zaxxer.hikari: DEBUG
+    org.springframework.security: DEBUG
+    com.uplus.crm.common.filter: DEBUG
 
 # Google OAuth - 환경변수 없으면 fallback 값으로 실행 (실제 OAuth 테스트 시엔 환경변수 필요)
 google:
