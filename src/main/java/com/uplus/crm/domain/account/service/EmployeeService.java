@@ -17,7 +17,6 @@ import com.uplus.crm.domain.account.entity.Employee;
 import com.uplus.crm.domain.account.entity.EmployeeDetail;
 import com.uplus.crm.domain.account.repository.mysql.EmployeeRepository;
 
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 @Service
