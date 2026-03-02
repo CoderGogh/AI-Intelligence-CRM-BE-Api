@@ -71,7 +71,7 @@ public class AdminEmployeeService {
         );
 
         // 6) EmployeeDetail 조회/없으면 생성 후 업데이트
-        EmployeeDetail detail = employeeDetailRepository.findById(empId.longValue())
+        EmployeeDetail detail = employeeDetailRepository.findById(empId)
                 .orElseGet(() -> EmployeeDetail.builder()
                         .empId(empId)
                         .employee(employee)
