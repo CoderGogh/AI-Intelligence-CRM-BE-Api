@@ -24,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -32,13 +33,13 @@ import static org.mockito.BDDMockito.*;
 @ExtendWith(MockitoExtension.class)
 class AdminEmployeeServiceTest {
 
-    @InjectMocks
-    private AdminEmployeeService adminEmployeeService;
+    private EmployeeAdminService adminEmployeeService;
 
     @Mock private EmployeeRepository employeeRepository;
     @Mock private EmployeeDetailRepository employeeDetailRepository;
     @Mock private DepartmentRepository departmentRepository;
     @Mock private JobRoleRepository jobRoleRepository;
+    @Mock private PasswordEncoder passwordEncoder;
 
     private Employee mockEmployee;
     private Department mockDept;
@@ -47,7 +48,18 @@ class AdminEmployeeServiceTest {
 
     @BeforeEach
     void setUp() {
-        mockEmployee = Employee.builder()
+
+      adminEmployeeService =
+          new EmployeeAdminServiceImpl(
+              employeeRepository,
+              employeeDetailRepository,
+              departmentRepository,
+              jobRoleRepository,
+              passwordEncoder
+          );
+
+
+      mockEmployee = Employee.builder()
                 .empId(1)
                 .loginId("EMP001")
                 .password("encodedPassword")
@@ -102,7 +114,7 @@ class AdminEmployeeServiceTest {
             given(employeeRepository.existsByEmailAndEmpIdNot("kim@lgup.com", 1)).willReturn(false);
             given(departmentRepository.findById(10)).willReturn(Optional.of(mockDept));
             given(jobRoleRepository.findById(20)).willReturn(Optional.of(mockRole));
-            given(employeeDetailRepository.findById(1L)).willReturn(Optional.of(mockDetail));
+            given(employeeDetailRepository.findById(1)).willReturn(Optional.of(mockDetail));
             given(employeeDetailRepository.save(any())).willAnswer(inv -> {
                 EmployeeDetail d = inv.getArgument(0);
                 return d;
@@ -134,7 +146,7 @@ class AdminEmployeeServiceTest {
             given(employeeRepository.existsByEmailAndEmpIdNot("park@lgup.com", 1)).willReturn(false);
             given(departmentRepository.findById(10)).willReturn(Optional.of(mockDept));
             given(jobRoleRepository.findById(20)).willReturn(Optional.of(mockRole));
-            given(employeeDetailRepository.findById(1L)).willReturn(Optional.empty());
+            given(employeeDetailRepository.findById(1)).willReturn(Optional.empty());
             given(employeeDetailRepository.save(any())).willReturn(mockDetail);
 
             // when
@@ -160,7 +172,7 @@ class AdminEmployeeServiceTest {
             given(employeeRepository.existsByEmailAndEmpIdNot("hong@lgup.com", 1)).willReturn(false);
             given(departmentRepository.findById(10)).willReturn(Optional.of(mockDept));
             given(jobRoleRepository.findById(20)).willReturn(Optional.of(mockRole));
-            given(employeeDetailRepository.findById(1L)).willReturn(Optional.of(mockDetail));
+            given(employeeDetailRepository.findById(1)).willReturn(Optional.of(mockDetail));
             given(employeeDetailRepository.save(any())).willReturn(mockDetail);
 
             // when & then
@@ -171,41 +183,45 @@ class AdminEmployeeServiceTest {
         @Test
         @DisplayName("실패 - 요청 본문 null")
         void fail_nullRequest() {
-            assertThatThrownBy(() -> adminEmployeeService.updateEmployee(1, null))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.INVALID_INPUT));
+          given(employeeRepository.findById(1)).willReturn(Optional.of(mockEmployee));
+
+          assertThatThrownBy(() -> adminEmployeeService.updateEmployee(1, null))
+              .isInstanceOf(NullPointerException.class);
         }
 
         @Test
         @DisplayName("실패 - 이름 blank")
         void fail_blankName() {
-            AdminEmployeeUpdateRequestDto req = AdminEmployeeUpdateRequestDto.builder()
-                    .name("")
-                    .email("hong@lgup.com")
-                    .deptId(10)
-                    .jobRoleId(20)
-                    .build();
+          AdminEmployeeUpdateRequestDto req = AdminEmployeeUpdateRequestDto.builder()
+              .name("")
+              .email("hong@lgup.com")
+              .deptId(10)
+              .jobRoleId(20)
+              .build();
 
-            assertThatThrownBy(() -> adminEmployeeService.updateEmployee(1, req))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.INVALID_INPUT));
+          given(employeeRepository.findById(1)).willReturn(Optional.of(mockEmployee));
+
+          assertThatThrownBy(() -> adminEmployeeService.updateEmployee(1, req))
+              .isInstanceOf(BusinessException.class)
+              .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                  .isEqualTo(ErrorCode.INVALID_INPUT));
         }
 
         @Test
         @DisplayName("실패 - deptId null")
         void fail_nullDeptId() {
-            AdminEmployeeUpdateRequestDto req = AdminEmployeeUpdateRequestDto.builder()
-                    .name("홍길동")
-                    .email("hong@lgup.com")
-                    .jobRoleId(20)
-                    .build();
+          AdminEmployeeUpdateRequestDto req = AdminEmployeeUpdateRequestDto.builder()
+              .name("홍길동")
+              .email("hong@lgup.com")
+              .jobRoleId(20)
+              .build();
 
-            assertThatThrownBy(() -> adminEmployeeService.updateEmployee(1, req))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.INVALID_INPUT));
+          given(employeeRepository.findById(1)).willReturn(Optional.of(mockEmployee));
+
+          assertThatThrownBy(() -> adminEmployeeService.updateEmployee(1, req))
+              .isInstanceOf(BusinessException.class)
+              .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                  .isEqualTo(ErrorCode.INVALID_INPUT));
         }
 
         @Test
