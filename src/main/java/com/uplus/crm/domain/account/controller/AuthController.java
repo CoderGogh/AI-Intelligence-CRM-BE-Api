@@ -53,7 +53,7 @@ public class AuthController {
     @PostMapping("/google")
     public ResponseEntity<GoogleAuthResponseDto> googleLogin(
             @Valid @RequestBody GoogleAuthRequestDto request,
-            @Valid HttpServletResponse response) {
+            HttpServletResponse response) {
         return ResponseEntity.ok(authService.googleLogin(request, response));
     }
 
@@ -74,7 +74,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDto> login(
             @Valid @RequestBody LoginRequestDto request,
-            @Valid HttpServletResponse response) {
+            HttpServletResponse response) {
         return ResponseEntity.ok(authService.login(request, response));
     }
 
@@ -108,7 +108,7 @@ public class AuthController {
     @Operation(summary = "내 정보 및 메뉴 권한 조회", description = "현재 로그인된 직원의 상세 정보와 접근 가능한 메뉴 코드 목록을 조회합니다.")
 
     @GetMapping("/me")
-    public ResponseEntity<MyInfoResponseDto> getMyInfo(@AuthenticationPrincipal Integer empId) {
+    public ResponseEntity<MyInfoResponseDto> getMyInfo(@AuthenticationPrincipal(expression = "empId") Integer empId) {
         return ResponseEntity.ok(authService.getMyInfo(empId));
     }
 
@@ -121,7 +121,7 @@ public class AuthController {
     })
     @PutMapping("/me")
     public ResponseEntity<MyInfoUpdateResponseDto> updateMyInfo(
-            @AuthenticationPrincipal Integer empId,
+            @AuthenticationPrincipal(expression = "empId") Integer empId,
             @RequestBody MyInfoUpdateRequestDto req) {
         return ResponseEntity.ok(authService.updateMyInfo(empId, req));
     }
@@ -136,7 +136,7 @@ public class AuthController {
     })
     @PutMapping("/me/password")
     public ResponseEntity<PasswordChangeResponseDto> changePassword(
-            @AuthenticationPrincipal Integer empId,
+            @AuthenticationPrincipal(expression = "empId") Integer empId,
             @Valid @RequestBody PasswordChangeRequestDto request) {
         return ResponseEntity.ok(authService.changePassword(empId, request));
     }

@@ -23,6 +23,7 @@ public enum ErrorCode {
 
     // 403 Forbidden
     FORBIDDEN_ACCESS(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
+    ACCOUNT_INACTIVE(HttpStatus.FORBIDDEN, "비활성화된 계정입니다."),
 
     // 404 Not Found
     EMPLOYEE_NOT_FOUND(HttpStatus.NOT_FOUND, "직원 정보를 찾을 수 없습니다."),
@@ -30,6 +31,8 @@ public enum ErrorCode {
     FILTER_GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "필터 그룹을 찾을 수 없습니다."),
     FILTER_NOT_FOUND(HttpStatus.NOT_FOUND, "유효하지 않은 필터입니다."),
     NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "공지사항을 찾을 수 없습니다."),
+    NOTICE_ALREADY_DELETED(HttpStatus.BAD_REQUEST, "이미 삭제된 공지사항입니다."),
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다."),
 
     DEPARTMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부서입니다."),
     JOB_ROLE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 직무입니다."),

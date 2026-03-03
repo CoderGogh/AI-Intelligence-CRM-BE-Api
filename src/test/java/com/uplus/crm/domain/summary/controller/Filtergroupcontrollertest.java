@@ -5,6 +5,7 @@ import com.uplus.crm.common.config.SecurityConfig;
 import com.uplus.crm.common.exception.BusinessException;
 import com.uplus.crm.common.exception.ErrorCode;
 import com.uplus.crm.common.util.JwtUtil;
+import com.uplus.crm.domain.account.repository.mysql.EmployeeRepository;
 import com.uplus.crm.domain.summary.dto.FilterGroupDetailResponse;
 import com.uplus.crm.domain.summary.dto.FilterGroupListResponse;
 import com.uplus.crm.domain.summary.dto.FilterResponse;
@@ -42,6 +43,9 @@ class FilterGroupControllerTest {
     @MockitoBean
     JwtUtil jwtUtil;
 
+    @MockitoBean
+    EmployeeRepository employeeRepository; // JwtAuthFilter 의존성
+
     // JWT 인증 우회용 헬퍼
     private void mockJwtAuth() {
         given(jwtUtil.isValid(any())).willReturn(true);
@@ -60,7 +64,7 @@ class FilterGroupControllerTest {
                 FilterResponse.builder()
                         .filterId(30).filterKey("keyword").filterName("키워드").build(),
                 FilterResponse.builder()
-                        .filterId(34).filterKey("consult_status").altCode("CONSULT_STATUS").filterName("처리상태").build()
+                        .filterId(34).filterKey("consult_status").filterName("처리상태").build()
         );
         given(filterGroupService.getFilterDefinitions()).willReturn(filters);
 
