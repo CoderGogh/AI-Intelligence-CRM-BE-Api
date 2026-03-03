@@ -21,13 +21,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Notification", description = "알림 API")
 @RestController
-@RequestMapping("/v1/notifications")
+@RequestMapping("/notifications")
 @RequiredArgsConstructor
 public class NotificationController {
 
     private final NotificationService notificationService;
 
-    // ── GET /v1/notifications ─────────────────────────────────────────────────
+    // ── GET /notifications ─────────────────────────────────────────────────
 
     @Operation(summary = "알림 목록 조회", description = "최신순 페이징")
     @GetMapping
@@ -39,7 +39,7 @@ public class NotificationController {
                 notificationService.getNotifications(userDetails.getEmpId(), pageable));
     }
 
-    // ── GET /v1/notifications/unread-count ────────────────────────────────────
+    // ── GET /notifications/unread-count ────────────────────────────────────
 
     @Operation(summary = "미읽음 알림 수 조회")
     @GetMapping("/unread-count")
@@ -49,7 +49,7 @@ public class NotificationController {
         return ApiResponse.ok(notificationService.getUnreadCount(userDetails.getEmpId()));
     }
 
-    // ── PATCH /v1/notifications/{notificationId}/read ─────────────────────────
+    // ── PATCH /notifications/{notificationId}/read ─────────────────────────
 
     @Operation(summary = "단건 읽음 처리")
     @PatchMapping("/{notificationId}/read")
@@ -61,7 +61,7 @@ public class NotificationController {
         return ApiResponse.ok(null);
     }
 
-    // ── PATCH /v1/notifications/read-all ─────────────────────────────────────
+    // ── PATCH /notifications/read-all ─────────────────────────────────────
 
     @Operation(summary = "전체 읽음 처리")
     @PatchMapping("/read-all")
@@ -72,7 +72,7 @@ public class NotificationController {
         return ApiResponse.ok(null);
     }
 
-    // ── GET /v1/notifications/settings ───────────────────────────────────────
+    // ── GET /notifications/settings ───────────────────────────────────────
 
     @Operation(summary = "알림 수신 설정 조회")
     @GetMapping("/settings")
@@ -82,7 +82,7 @@ public class NotificationController {
         return ApiResponse.ok(notificationService.getSettings(userDetails.getEmpId()));
     }
 
-    // ── PATCH /v1/notifications/settings/{field} ──────────────────────────────
+    // ── PATCH /notifications/settings/{field} ──────────────────────────────
 
     @Operation(summary = "알림 수신 설정 토글",
                description = "field: notice | best_practice | policy_change")

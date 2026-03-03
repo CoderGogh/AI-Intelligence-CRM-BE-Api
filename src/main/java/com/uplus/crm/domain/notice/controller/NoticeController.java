@@ -30,13 +30,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Notice", description = "공지사항 CRUD API")
 @RestController
-@RequestMapping("/v1/notices")
+@RequestMapping("/notices")
 @RequiredArgsConstructor
 public class NoticeController {
 
     private final NoticeService noticeService;
 
-    // ── POST /v1/notices ──────────────────────────────────────────────────────
+    // ── POST /notices ──────────────────────────────────────────────────────
 
     @Operation(summary = "공지 등록 (ADMIN만)",
                description = "sendNotification=true 이면 대상 역할 직원에게 알림 발송")
@@ -51,7 +51,7 @@ public class NoticeController {
         return ApiResponse.ok("공지사항이 등록되었습니다.", response);
     }
 
-    // ── GET /v1/notices ───────────────────────────────────────────────────────
+    // ── GET /notices ───────────────────────────────────────────────────────
 
     @Operation(summary = "공지 목록 조회 (역할 기반)",
                description = "ADMIN: DELETED 제외 전체 / AGENT: ACTIVE + visible 기간 + 역할 필터")
@@ -65,7 +65,7 @@ public class NoticeController {
         return ApiResponse.ok(page);
     }
 
-    // ── GET /v1/notices/{noticeId} ────────────────────────────────────────────
+    // ── GET /notices/{noticeId} ────────────────────────────────────────────
 
     @Operation(summary = "공지 상세 조회",
                description = "조회수 증가 + 읽음 이력 저장 + 해당 공지 알림 읽음 처리")
@@ -77,7 +77,7 @@ public class NoticeController {
         return ApiResponse.ok(noticeService.getNoticeDetail(noticeId, userDetails.getEmpId(), userDetails.getRoleName()));
     }
 
-    // ── PUT /v1/notices/{noticeId} ────────────────────────────────────────────
+    // ── PUT /notices/{noticeId} ────────────────────────────────────────────
 
     @Operation(summary = "공지 수정 (ADMIN만)",
                description = "visibleFrom 변경 시 status 자동 재결정. DELETED 상태는 수정 불가")
@@ -90,7 +90,7 @@ public class NoticeController {
         return ApiResponse.ok(noticeService.updateNotice(noticeId, request));
     }
 
-    // ── DELETE /v1/notices/{noticeId} ─────────────────────────────────────────
+    // ── DELETE /notices/{noticeId} ─────────────────────────────────────────
 
     @Operation(summary = "공지 삭제 (ADMIN만)", description = "소프트 삭제 — status → DELETED")
     @PreAuthorize("hasRole('ADMIN')")
