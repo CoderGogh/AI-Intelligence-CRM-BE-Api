@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Demo", description = "시연용 상담 등록 API")
 @RestController
-@RequestMapping("/v1/demo/consultation")
+@RequestMapping("/demo/consultation")
 @RequiredArgsConstructor
 public class DemoConsultationController {
 
@@ -36,7 +36,7 @@ public class DemoConsultationController {
 
     @Operation(summary = "상담 결과 제출",
                description = """
-                       GET /v1/demo/consultation 응답에서 받은 값을 그대로 채우고,\s
+                       GET /demo/consultation 응답에서 받은 값을 그대로 채우고,\s
                        iamIssue / iamAction / iamMemo 세 필드를 직접 입력하여 전송합니다.\s
                        consultation_results 테이블에 신규 row를 삽입합니다.\s
                        (empId는 JWT 토큰에서 자동 추출, channel은 CALL 또는 CHATTING만 허용)""")
