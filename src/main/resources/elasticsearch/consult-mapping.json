@@ -1,22 +1,46 @@
 {
   "properties": {
-    "content": { "type": "text", "analyzer": "korean_analyzer" },
-    "iamIssue": { "type": "text", "analyzer": "korean_analyzer" },
-    "iamAction": { "type": "text", "analyzer": "korean_analyzer" },
-    "iamMemo": { "type": "text", "analyzer": "korean_analyzer" },
-    "allText": { "type": "text", "analyzer": "korean_analyzer" },
+    "content": {
+      "type": "text",
+      "analyzer": "korean_index_analyzer",
+      "search_analyzer": "korean_search_analyzer"
+    },
+    "iamIssue": {
+      "type": "text",
+      "analyzer": "korean_index_analyzer",
+      "search_analyzer": "korean_search_analyzer"
+    },
+    "iamAction": {
+      "type": "text",
+      "analyzer": "korean_index_analyzer",
+      "search_analyzer": "korean_search_analyzer"
+    },
+    "iamMemo": {
+      "type": "text",
+      "analyzer": "korean_index_analyzer",
+      "search_analyzer": "korean_search_analyzer"
+    },
+    "allText": {
+      "type": "text",
+      "analyzer": "korean_index_analyzer",
+      "search_analyzer": "korean_search_analyzer"
+    },
     "customerName": {
       "type": "text",
-      "analyzer": "korean_analyzer",
+      "analyzer": "korean_index_analyzer",
+      "search_analyzer": "korean_search_analyzer",
       "fields": {
         "raw": { "type": "keyword" }
       }
     },
+    "phone": { "type": "keyword" },
+    "customerId": { "type": "keyword" },
     "sentiment": { "type": "keyword" },
     "priority": { "type": "keyword" },
-    "customerId": { "type": "keyword" },
-    "phone": { "type": "keyword" },
     "riskScore": { "type": "integer" },
-    "createdAt": { "type": "date", "format": "yyyy-MM-dd HH:mm:ss" }
+    "createdAt": {
+      "type": "date",
+      "format": "yyyy-MM-dd HH:mm:ss"
+    }
   }
 }

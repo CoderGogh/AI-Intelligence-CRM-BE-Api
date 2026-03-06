@@ -1,13 +1,23 @@
 {
   "analysis": {
     "analyzer": {
-      "korean_analyzer": {
+      "korean_index_analyzer": {
         "type": "custom",
         "tokenizer": "nori_mixed_tokenizer",
         "filter": [
           "nori_readingform",
           "lowercase",
-          "synonym_filter",
+          "synonym_index_filter",
+          "stop_filter"
+        ]
+      },
+      "korean_search_analyzer": {
+        "type": "custom",
+        "tokenizer": "nori_mixed_tokenizer",
+        "filter": [
+          "nori_readingform",
+          "lowercase",
+          "synonym_search_filter",
           "stop_filter"
         ]
       }
@@ -20,13 +30,20 @@
       }
     },
     "filter": {
-      "synonym_filter": {
+      "synonym_index_filter": {
         "type": "synonym",
-        "synonyms_path": "analysis/synonyms.txt"
+        "synonyms_path": "analysis/synonyms.txt",
+        "lenient": true
+      },
+      "synonym_search_filter": {
+        "type": "synonym_graph",
+        "synonyms_path": "analysis/synonyms.txt",
+        "lenient": true
       },
       "stop_filter": {
         "type": "stop",
-        "stopwords_path": "analysis/stopwords.txt"
+        "stopwords_path": "analysis/stopwords.txt",
+        "ignore_case": true
       }
     }
   }

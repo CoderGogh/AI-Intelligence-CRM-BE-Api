@@ -2,7 +2,11 @@ package com.uplus.crm.domain.elasticsearch.entity;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.elasticsearch.annotations.*;
+import org.springframework.data.elasticsearch.annotations.Document;
+import org.springframework.data.elasticsearch.annotations.Field;
+import org.springframework.data.elasticsearch.annotations.FieldType;
+import org.springframework.data.elasticsearch.annotations.InnerField;
+import org.springframework.data.elasticsearch.annotations.MultiField;
 
 import java.time.LocalDateTime;
 
@@ -11,27 +15,25 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Document(indexName = "consult-index")
-@Setting(settingPath = "elasticsearch/consult-settings.json")
+@Document(indexName = "consult-index", createIndex = false)
 public class ConsultDoc {
 
     @Id
     private String id;
 
-    // 모든 분석기 이름을 korean_analyzer로 통일합니다.
-    @Field(type = FieldType.Text, analyzer = "korean_analyzer")
+    @Field(type = FieldType.Text, analyzer = "korean_index_analyzer", searchAnalyzer = "korean_search_analyzer")
     private String content;
 
-    @Field(type = FieldType.Text, analyzer = "korean_analyzer")
+    @Field(type = FieldType.Text, analyzer = "korean_index_analyzer", searchAnalyzer = "korean_search_analyzer")
     private String iamIssue;
 
-    @Field(type = FieldType.Text, analyzer = "korean_analyzer")
+    @Field(type = FieldType.Text, analyzer = "korean_index_analyzer", searchAnalyzer = "korean_search_analyzer")
     private String iamAction;
 
-    @Field(type = FieldType.Text, analyzer = "korean_analyzer")
+    @Field(type = FieldType.Text, analyzer = "korean_index_analyzer", searchAnalyzer = "korean_search_analyzer")
     private String iamMemo;
 
-    @Field(type = FieldType.Text, analyzer = "korean_analyzer")
+    @Field(type = FieldType.Text, analyzer = "korean_index_analyzer", searchAnalyzer = "korean_search_analyzer")
     private String allText;
 
     @Field(type = FieldType.Keyword)
@@ -47,7 +49,7 @@ public class ConsultDoc {
     private String customerId;
 
     @MultiField(
-            mainField = @Field(type = FieldType.Text, analyzer = "korean_analyzer"),
+            mainField = @Field(type = FieldType.Text, analyzer = "korean_index_analyzer", searchAnalyzer = "korean_search_analyzer"),
             otherFields = {
                     @InnerField(suffix = "raw", type = FieldType.Keyword)
             }
