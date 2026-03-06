@@ -7,6 +7,7 @@ import com.uplus.crm.domain.summary.service.SummaryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "상담요약", description = "AI 요약 처리가 완료된 상담 요약문 검색 및 조회")
@@ -26,6 +28,35 @@ import org.springframework.web.bind.annotation.RestController;
 public class SummaryController {
 
   private final SummaryService service;
+
+  @Operation(
+      summary = "IAM 검색 추천 키워드",
+      description = """
+          IAM 기반 검색(issue / action / memo) 및 통합 keyword 검색 입력창에서
+          자동완성·추천검색어를 제공합니다.
+
+          **데이터 소스 (MongoDB)**
+          - `summary.keywords` : AI가 추출한 상담 키워드 (주 소스, 빈도 내림차순)
+          - `iam.matchKeyword`  : 상담 중 실제 매칭된 키워드 (보조 소스)
+
+          **파라미터**
+          - `q`    : 입력 중인 prefix. 미입력 시 전체 인기 키워드 Top N 반환
+          - `size` : 반환 개수 (기본 10, 최대 30)
+
+          **적용 위치**
+          - `keyword` 통합 검색 입력창
+          - `iamIssue` / `iamAction` / `iamMemo` 각 입력창
+          - 저장된 검색조건 재실행 전 조건 확인 화면
+          """)
+  @GetMapping("/suggest")
+  public List<String> suggest(
+      @Parameter(description = "검색어 prefix (미입력 시 인기 키워드 반환)", example = "해지")
+      @RequestParam(required = false) String q,
+      @Parameter(description = "반환 개수 (최대 30)", example = "10")
+      @RequestParam(defaultValue = "10") int size) {
+
+    return service.suggestKeywords(q, Math.min(size, 30));
+  }
 
   @Operation(
       summary = "상담요약 목록 검색",

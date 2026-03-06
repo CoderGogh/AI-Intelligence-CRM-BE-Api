@@ -347,6 +347,42 @@ public class ConsultSearchControllerTest {
     }
 
     @Operation(
+        summary = "IAM 필드 검색 추천어 (Elasticsearch)",
+        description = """
+            Elasticsearch IAM 필드에서 match_phrase_prefix로 추천 검색어를 반환합니다.
+            동의어 사전과 형태소 분석(Nori)이 적용되어 구어체·축약어 입력도 대응합니다.
+
+            **field 값**
+            - `iamIssue`  : 상담 이슈 필드에서 추천
+            - `iamAction` : 상담 조치사항 필드에서 추천
+            - `iamMemo`   : 상담 특이사항 필드에서 추천
+            - `all`       : 3개 필드 통합 추천 (기본값)
+
+            **사용 예시**
+            - `q=해지`               → "서비스 해지 요청 - 타사 이동 검토 중" 등 추천
+            - `q=미납, field=iamIssue` → "갤럭시 S24 울트라 미납금 번호이동 제한" 등 추천
+            - `q=번이`               → 번호이동 동의어 적용 후 관련 IAM 문구 추천
+            - `q=갤폰`               → 갤럭시 동의어 적용 추천
+
+            **적용 위치**
+            - iamIssue / iamAction / iamMemo 검색 입력창 자동완성
+            - 통합 keyword 검색 자동완성
+            """
+    )
+    @GetMapping("/suggest")
+    public ResponseEntity<List<String>> suggestKeywords(
+            @Parameter(description = "입력 중인 검색어", example = "해지")
+            @RequestParam String q,
+            @Parameter(description = "대상 필드 (iamIssue / iamAction / iamMemo / all)", example = "all")
+            @RequestParam(defaultValue = "all") String field,
+            @Parameter(description = "반환 개수 (최대 20)", example = "10")
+            @RequestParam(defaultValue = "10") int size) {
+
+        List<String> suggestions = consultSearchService.suggestIamKeywords(q, field, Math.min(size, 20));
+        return ResponseEntity.ok(suggestions);
+    }
+
+    @Operation(
         summary = "통합 키워드 검색 (동의어 사전 적용)",
         description = """
             동의어 사전과 형태소 분석을 적용한 전문 검색입니다.

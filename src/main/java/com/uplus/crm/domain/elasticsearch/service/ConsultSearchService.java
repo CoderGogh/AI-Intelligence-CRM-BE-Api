@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -281,6 +283,61 @@ public class ConsultSearchService {
                 .build();
 
         return toList(elasticsearchOperations.search(query, ConsultDoc.class));
+    }
+
+    /**
+     * IAM 필드 기반 검색 추천어 (Elasticsearch match_phrase_prefix).
+     *
+     * <p>동의어 사전·형태소 분석이 적용된 {@code korean_search_analyzer}로 검색하므로
+     * 구어체·축약어 입력도 정규 표현으로 확장되어 추천어가 반환됩니다.</p>
+     *
+     * @param prefix 입력 중인 검색어 (빈 값이면 빈 리스트 반환)
+     * @param field  대상 필드: {@code iamIssue} / {@code iamAction} / {@code iamMemo} / {@code all}
+     * @param limit  최대 반환 개수
+     */
+    public List<String> suggestIamKeywords(String prefix, String field, int limit) {
+        if (prefix == null || prefix.isBlank()) return List.of();
+
+        List<String> targetFields = switch (field) {
+            case "iamIssue"  -> List.of("iamIssue");
+            case "iamAction" -> List.of("iamAction");
+            case "iamMemo"   -> List.of("iamMemo");
+            default          -> List.of("iamIssue", "iamAction", "iamMemo");
+        };
+
+        NativeQuery query = NativeQuery.builder()
+                .withQuery(q -> q
+                        .bool(b -> {
+                            targetFields.forEach(f -> b.should(s -> s
+                                    .matchPhrasePrefix(mp -> mp.field(f).query(prefix))
+                            ));
+                            b.minimumShouldMatch("1");
+                            return b;
+                        })
+                )
+                .withPageable(PageRequest.of(0, limit * 3))
+                .build();
+
+        LinkedHashSet<String> suggestions = new LinkedHashSet<>();
+        for (ConsultDoc doc : toList(elasticsearchOperations.search(query, ConsultDoc.class))) {
+            if (suggestions.size() >= limit) break;
+            for (String f : targetFields) {
+                String value = extractField(doc, f);
+                if (value != null && !value.isBlank()) {
+                    suggestions.add(value.trim());
+                }
+            }
+        }
+        return new ArrayList<>(suggestions).subList(0, Math.min(limit, suggestions.size()));
+    }
+
+    private String extractField(ConsultDoc doc, String field) {
+        return switch (field) {
+            case "iamIssue"  -> doc.getIamIssue();
+            case "iamAction" -> doc.getIamAction();
+            case "iamMemo"   -> doc.getIamMemo();
+            default -> null;
+        };
     }
 
     private List<ConsultDoc> toList(SearchHits<ConsultDoc> hits) {

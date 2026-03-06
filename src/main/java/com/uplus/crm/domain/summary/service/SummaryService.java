@@ -10,11 +10,17 @@ import com.uplus.crm.domain.summary.repository.SummaryConsultationResultReposito
 import com.uplus.crm.domain.summary.repository.SummaryRepository;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
+import org.bson.Document;
 import org.springframework.data.domain.*;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
@@ -64,6 +70,61 @@ public class SummaryService {
             .orElseThrow(() -> new BusinessException(ErrorCode.SUMMARY_NOT_FOUND));
 
     return ConsultationSummaryDetailResponse.from(entity);
+  }
+
+  // ── 추천 검색어 ────────────────────────────────────────────────────────────
+
+  /**
+   * IAM 기반 검색 추천 키워드 반환.
+   *
+   * <ul>
+   *   <li>AI가 추출한 {@code summary.keywords} 배열을 주 소스로 집계</li>
+   *   <li>부족하면 {@code iam.matchKeyword} 배열에서 보충</li>
+   *   <li>prefix 미입력 시 전체 빈도 Top N 반환</li>
+   * </ul>
+   *
+   * @param prefix 입력 중인 검색어 (null/공백이면 인기 키워드 반환)
+   * @param limit  최대 반환 개수
+   */
+  public List<String> suggestKeywords(String prefix, int limit) {
+    String safePrefix = (prefix != null && !prefix.isBlank())
+        ? Pattern.quote(prefix.trim()) : null;
+
+    Set<String> result = new LinkedHashSet<>();
+    result.addAll(aggregateKeywordsFromField("summary.keywords", safePrefix, limit));
+
+    if (result.size() < limit) {
+      aggregateKeywordsFromField("iam.matchKeyword", safePrefix, limit - result.size())
+          .stream().filter(k -> !result.contains(k)).forEach(result::add);
+    }
+    return List.copyOf(result);
+  }
+
+  /**
+   * MongoDB 배열 필드를 대상으로 prefix 집계 후 빈도 내림차순 반환.
+   */
+  private List<String> aggregateKeywordsFromField(String field, String safePrefix, int n) {
+    List<AggregationOperation> ops = new ArrayList<>();
+
+    if (safePrefix != null) {
+      ops.add(Aggregation.match(Criteria.where(field).regex("^" + safePrefix, "i")));
+    } else {
+      ops.add(Aggregation.match(Criteria.where(field).exists(true)));
+    }
+    ops.add(Aggregation.unwind("$" + field));
+    if (safePrefix != null) {
+      ops.add(Aggregation.match(Criteria.where(field).regex("^" + safePrefix, "i")));
+    }
+    ops.add(Aggregation.group(field).count().as("cnt"));
+    ops.add(Aggregation.sort(Sort.by(Sort.Direction.DESC, "cnt")));
+    ops.add(Aggregation.limit(n));
+
+    return mongoTemplate
+        .aggregate(Aggregation.newAggregation(ops), ConsultationSummary.class, Document.class)
+        .getMappedResults().stream()
+        .map(d -> d.getString("_id"))
+        .filter(Objects::nonNull)
+        .toList();
   }
 
   // ── private ────────────────────────────────────────────────────────────────
