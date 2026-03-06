@@ -33,7 +33,21 @@ public class ConsultDoc {
     @Field(type = FieldType.Text, analyzer = "korean_index_analyzer", searchAnalyzer = "korean_search_analyzer")
     private String iamMemo;
 
-    @Field(type = FieldType.Text, analyzer = "korean_index_analyzer", searchAnalyzer = "korean_search_analyzer")
+    /**
+     * 검색용: korean_index_analyzer (기본)<br>
+     * 분석용: allText.analysis 서브필드 → korean_analysis_index_analyzer
+     * (인삿말·응대 어근 제거, discard 모드 토크나이저)
+     */
+    @MultiField(
+            mainField = @Field(type = FieldType.Text,
+                    analyzer = "korean_index_analyzer",
+                    searchAnalyzer = "korean_search_analyzer"),
+            otherFields = {
+                    @InnerField(suffix = "analysis", type = FieldType.Text,
+                            analyzer = "korean_analysis_index_analyzer",
+                            searchAnalyzer = "korean_analysis_search_analyzer")
+            }
+    )
     private String allText;
 
     @Field(type = FieldType.Keyword)
@@ -61,4 +75,12 @@ public class ConsultDoc {
 
     @Field(type = FieldType.Date, format = {}, pattern = "uuuu-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
+
+    /** 인사말 포함 여부 (응대품질 분석용) — 저장 시 자동 감지 */
+    @Field(type = FieldType.Boolean)
+    private Boolean hasGreeting;
+
+    /** 마무리 인사 포함 여부 (응대품질 분석용) — 저장 시 자동 감지 */
+    @Field(type = FieldType.Boolean)
+    private Boolean hasFarewell;
 }

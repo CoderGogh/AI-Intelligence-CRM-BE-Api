@@ -1,6 +1,7 @@
 {
   "analysis": {
     "analyzer": {
+
       "korean_index_analyzer": {
         "type": "custom",
         "tokenizer": "nori_mixed_tokenizer",
@@ -20,16 +21,47 @@
           "synonym_search_filter",
           "stop_filter"
         ]
+      },
+
+      "korean_analysis_index_analyzer": {
+        "type": "custom",
+        "tokenizer": "nori_discard_tokenizer",
+        "filter": [
+          "nori_readingform",
+          "lowercase",
+          "analysis_synonym_filter",
+          "analysis_stop_filter"
+        ]
+      },
+      "korean_analysis_search_analyzer": {
+        "type": "custom",
+        "tokenizer": "nori_discard_tokenizer",
+        "filter": [
+          "nori_readingform",
+          "lowercase",
+          "analysis_synonym_search_filter",
+          "analysis_stop_filter"
+        ]
       }
+
     },
     "tokenizer": {
+
       "nori_mixed_tokenizer": {
         "type": "nori_tokenizer",
         "decompound_mode": "mixed",
         "user_dictionary": "analysis/userdict.txt"
+      },
+
+      "nori_discard_tokenizer": {
+        "type": "nori_tokenizer",
+        "decompound_mode": "discard",
+        "user_dictionary": "analysis/analysis_userdict.txt"
       }
+
     },
     "filter": {
+
       "synonym_index_filter": {
         "type": "synonym",
         "synonyms_path": "analysis/synonyms.txt",
@@ -44,7 +76,24 @@
         "type": "stop",
         "stopwords_path": "analysis/stopwords.txt",
         "ignore_case": true
+      },
+
+      "analysis_synonym_filter": {
+        "type": "synonym",
+        "synonyms_path": "analysis/analysis_synonyms.txt",
+        "lenient": true
+      },
+      "analysis_synonym_search_filter": {
+        "type": "synonym_graph",
+        "synonyms_path": "analysis/analysis_synonyms.txt",
+        "lenient": true
+      },
+      "analysis_stop_filter": {
+        "type": "stop",
+        "stopwords_path": "analysis/analysis_stopwords.txt",
+        "ignore_case": true
       }
+
     }
   }
 }

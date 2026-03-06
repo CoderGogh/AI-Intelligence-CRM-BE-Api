@@ -25,6 +25,14 @@ public class ConsultSearchService {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
+    // ── 인삿말 감지 패턴 (응대품질 분석용) ─────────────────────────────────────
+    private static final List<String> GREETING_PATTERNS = List.of(
+            "안녕하세요", "안녕하십니까", "반갑습니다", "좋은 아침");
+
+    private static final List<String> FAREWELL_PATTERNS = List.of(
+            "감사합니다", "감사드립니다", "수고하세요", "수고하셨습니다",
+            "고맙습니다", "즐거운 하루", "좋은 하루", "안녕히 계세요");
+
     private static final List<String> FULL_FIELDS = List.of(
             "iamIssue^3.0",
             "iamAction^2.0",
@@ -38,10 +46,27 @@ public class ConsultSearchService {
     private final ElasticsearchOperations elasticsearchOperations;
 
     /**
-     * 상담 데이터 저장 (Indexing)
+     * 상담 데이터 저장 (Indexing).
+     * 저장 전에 인삿말·마무리 인사 포함 여부를 자동 감지하여
+     * {@code hasGreeting}·{@code hasFarewell} 필드를 설정한다.
      */
     public void saveConsultation(ConsultDoc consultDoc) {
+        String text = buildRawText(consultDoc);
+        consultDoc.setHasGreeting(containsAny(text, GREETING_PATTERNS));
+        consultDoc.setHasFarewell(containsAny(text, FAREWELL_PATTERNS));
         consultElasticRepository.save(consultDoc);
+    }
+
+    private String buildRawText(ConsultDoc doc) {
+        StringBuilder sb = new StringBuilder();
+        if (doc.getContent() != null)  sb.append(doc.getContent()).append(' ');
+        if (doc.getAllText() != null)   sb.append(doc.getAllText());
+        return sb.toString();
+    }
+
+    private boolean containsAny(String text, List<String> patterns) {
+        if (text == null || text.isBlank()) return false;
+        return patterns.stream().anyMatch(text::contains);
     }
 
     /**
@@ -279,6 +304,58 @@ public class ConsultSearchService {
                         })
                 )
                 .withSort(Sort.by(Sort.Direction.DESC, "riskScore"))
+                .withPageable(PageRequest.of(page, size))
+                .build();
+
+        return toList(elasticsearchOperations.search(query, ConsultDoc.class));
+    }
+
+    // ── 분석 전용 메서드 ────────────────────────────────────────────────────────
+
+    /**
+     * 응대품질 분석: 인삿말·마무리 인사 여부로 상담 필터링.
+     *
+     * <ul>
+     *   <li>{@code hasGreeting=false} → 인삿말 없는 상담 (품질 미달 후보)</li>
+     *   <li>{@code hasFarewell=false} → 마무리 인사 없는 상담 (품질 미달 후보)</li>
+     *   <li>null 전달 시 해당 조건 미적용</li>
+     * </ul>
+     */
+    public List<ConsultDoc> searchByGreetingFlag(
+            Boolean hasGreeting, Boolean hasFarewell, int page, int size) {
+
+        NativeQuery query = NativeQuery.builder()
+                .withQuery(q -> q
+                        .bool(b -> {
+                            if (hasGreeting != null) {
+                                b.filter(f -> f.term(t -> t.field("hasGreeting").value(hasGreeting)));
+                            }
+                            if (hasFarewell != null) {
+                                b.filter(f -> f.term(t -> t.field("hasFarewell").value(hasFarewell)));
+                            }
+                            return b;
+                        })
+                )
+                .withSort(Sort.by(Sort.Direction.DESC, "riskScore"))
+                .withPageable(PageRequest.of(page, size))
+                .build();
+
+        return toList(elasticsearchOperations.search(query, ConsultDoc.class));
+    }
+
+    /**
+     * 분석용 키워드 검색: {@code allText.analysis} 서브필드 대상.
+     * 인삿말·응대 어근이 제거된 토큰으로 검색하여 실질 내용 관련 문서를 반환.
+     */
+    public List<ConsultDoc> searchByAnalysisKeyword(String keyword, int page, int size) {
+        NativeQuery query = NativeQuery.builder()
+                .withQuery(q -> q
+                        .multiMatch(m -> m
+                                .fields("allText.analysis^2.0", "iamIssue^3.0", "iamAction^2.0")
+                                .query(keyword)
+                                .fuzziness("AUTO")
+                        )
+                )
                 .withPageable(PageRequest.of(page, size))
                 .build();
 

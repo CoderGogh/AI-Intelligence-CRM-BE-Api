@@ -346,6 +346,75 @@ public class ConsultSearchControllerTest {
         return ResponseEntity.ok("테스트 데이터 " + docs.size() + "건 저장 완료!");
     }
 
+    // ==================== [분석 전용] 응대품질 분석 API ====================
+
+    @Operation(
+        summary = "[분석] 인삿말 여부 기반 응대품질 조회",
+        description = """
+            hasGreeting·hasFarewell 필드로 응대품질 미달 상담을 필터링합니다.
+            저장 시 자동 감지되는 필드입니다.
+
+            **감지 패턴**
+            - 인사말: 안녕하세요 / 안녕하십니까 / 반갑습니다 / 좋은 아침
+            - 마무리: 감사합니다 / 감사드립니다 / 수고하세요 / 고맙습니다 / 안녕히 계세요 등
+
+            **활용 예시**
+            - `hasGreeting=false`  → 인사말 없이 시작한 상담 (품질 미달 후보)
+            - `hasFarewell=false`  → 마무리 인사 없이 종료한 상담 (품질 미달 후보)
+            - 둘 다 false          → 인사 완전 미포함 상담 (최우선 관리 대상)
+            - 둘 다 생략           → 전체 상담 반환 (riskScore 내림차순)
+            """
+    )
+    @GetMapping("/analysis/quality")
+    public ResponseEntity<List<ConsultDoc>> analyzeQuality(
+            @Parameter(description = "인사말 포함 여부 필터 (true/false, 생략 시 무조건)", example = "false")
+            @RequestParam(required = false) Boolean hasGreeting,
+            @Parameter(description = "마무리 인사 포함 여부 필터 (true/false, 생략 시 무조건)", example = "false")
+            @RequestParam(required = false) Boolean hasFarewell,
+            @Parameter(description = "페이지 번호", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기", example = "20")
+            @RequestParam(defaultValue = "20") int size) {
+
+        return ResponseEntity.ok(
+                consultSearchService.searchByGreetingFlag(hasGreeting, hasFarewell, page, size));
+    }
+
+    @Operation(
+        summary = "[분석] 분석용 키워드 검색 (인삿말·응대 어근 제거)",
+        description = """
+            `allText.analysis` 서브필드를 대상으로 검색합니다.
+            검색용 `allText`와 달리 다음 토큰이 분석 단계에서 제거됩니다.
+
+            **제거 대상**
+            - 인삿말·마무리말 어근: 안녕, 반갑, 감사, 죄송, 수고, 실례
+            - 일반 응대 어근: 확인, 안내, 처리, 연결, 진행, 설명 (모든 상담에 공통 출현)
+            - 검색 불용어 전체 포함
+
+            **용도**
+            - 실제 상담 내용(issue/action)에 집중한 키워드 분석
+            - 응대 품질 지표 추출
+            - 유사 상담 군집 분석 (카테고리 미분류 상담 탐지)
+
+            **분석기**: `korean_analysis_index_analyzer` / `korean_analysis_search_analyzer`
+            (decompound_mode: discard + analysis 전용 사전)
+            """
+    )
+    @GetMapping("/analysis/keywords")
+    public ResponseEntity<List<ConsultDoc>> analyzeKeywords(
+            @Parameter(description = "분석할 키워드", example = "미납 번호이동")
+            @RequestParam String keyword,
+            @Parameter(description = "페이지 번호", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기", example = "20")
+            @RequestParam(defaultValue = "20") int size) {
+
+        return ResponseEntity.ok(
+                consultSearchService.searchByAnalysisKeyword(keyword, page, size));
+    }
+
+    // ==================== [검색 전용] 추천어 API ====================
+
     @Operation(
         summary = "IAM 필드 검색 추천어 (Elasticsearch)",
         description = """
