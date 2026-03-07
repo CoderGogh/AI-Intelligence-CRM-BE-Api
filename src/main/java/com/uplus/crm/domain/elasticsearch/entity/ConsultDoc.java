@@ -21,6 +21,10 @@ public class ConsultDoc {
     @Id
     private String id;
 
+    /** MongoDB consultation_summary.consultId 와 매핑 — ES→MongoDB 조인 키 */
+    @Field(type = FieldType.Long)
+    private Long consultId;
+
     @Field(type = FieldType.Text, analyzer = "korean_index_analyzer", searchAnalyzer = "korean_search_analyzer")
     private String content;
 

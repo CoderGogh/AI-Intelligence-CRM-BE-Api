@@ -177,21 +177,23 @@ public class FilterGroupService {
             String key = fc.getFilter().getFilterKey();
             String val = fc.getFilterValue();
             switch (key) {
-                case "keyword"        -> req.setKeyword(val);
-                case "consult_from"   -> req.setFrom(LocalDate.parse(val));
-                case "consult_to"     -> req.setTo(LocalDate.parse(val));
-                case "consultant_id"  -> req.setAgentId(Long.parseLong(val));
-                case "category_code"  -> req.setCategoryCode(val);
-                case "channel"        -> req.setChannel(val);
-                case "issue_keyword"  -> req.setIamIssue(val);
-                case "action_keyword" -> req.setIamAction(val);
-                case "memo_keyword"   -> req.setIamMemo(val);
-                case "customer_name"  -> req.setCustomerName(val);
-                case "customer_phone" -> req.setCustomerPhone(val);
-                case "customer_type"  -> req.setCustomerType(val);
-                case "customer_grade" -> grades.add(val);
-                case "risk_type"      -> risks.add(val);
-                default -> { /* product_code, contract_type 등 비지원 필드는 무시 */ }
+                case "keyword"              -> req.setKeyword(val);
+                case "consult_from"         -> req.setFrom(LocalDate.parse(val));
+                case "consult_to"           -> req.setTo(LocalDate.parse(val));
+                case "consultant_name"      -> req.setConsultantName(val);
+                case "category_name"        -> req.setCategoryName(val);
+                case "channel"              -> req.setChannel(val);
+                case "customer_name"        -> req.setCustomerName(val);
+                case "customer_phone"       -> req.setCustomerPhone(val);
+                case "customer_type"        -> req.setCustomerType(val);
+                case "customer_grade"       -> grades.add(val);
+                case "risk_type"            -> risks.add(val);
+                case "product_name"         -> req.setProductName(val);
+                case "consult_satisfaction" -> {
+                    try { req.setSatisfactionScore(Integer.parseInt(val)); }
+                    catch (NumberFormatException ignored) {}
+                }
+                default -> { /* 비지원 필드는 무시 */ }
             }
         }
 

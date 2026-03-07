@@ -17,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -67,6 +68,52 @@ public class ConsultSearchService {
     private boolean containsAny(String text, List<String> patterns) {
         if (text == null || text.isBlank()) return false;
         return patterns.stream().anyMatch(text::contains);
+    }
+
+    /**
+     * 키워드로 ES 검색 후 consultId 목록 반환 (MongoDB Hybrid 조인용).
+     *
+     * <ul>
+     *   <li>동의어 사전·형태소 분석 적용 (BestFields + Phrase 조합)</li>
+     *   <li>consultId가 null인 ConsultDoc(테스트 데이터 등)은 결과에서 제외</li>
+     *   <li>비어 있으면 호출 측에서 MongoDB regex fallback 처리</li>
+     * </ul>
+     *
+     * @param keyword 검색어
+     * @return 매칭된 consultId 목록 (최대 1000건)
+     */
+    public List<Long> searchConsultIdsByKeyword(String keyword) {
+        NativeQuery query = NativeQuery.builder()
+                .withQuery(q -> q
+                        .bool(b -> b
+                                .should(s -> s
+                                        .multiMatch(m -> m
+                                                .fields(FULL_FIELDS)
+                                                .query(keyword)
+                                                .type(TextQueryType.BestFields)
+                                                .fuzziness("AUTO")
+                                                .minimumShouldMatch("1")
+                                        )
+                                )
+                                .should(s -> s
+                                        .multiMatch(m -> m
+                                                .fields("iamIssue^4.0", "iamAction^2.5", "content^2.0", "allText")
+                                                .query(keyword)
+                                                .type(TextQueryType.Phrase)
+                                                .boost(2.0f)
+                                        )
+                                )
+                                .minimumShouldMatch("1")
+                        )
+                )
+                .withPageable(PageRequest.of(0, 1000))
+                .build();
+
+        return toList(elasticsearchOperations.search(query, ConsultDoc.class)).stream()
+                .map(ConsultDoc::getConsultId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
     }
 
     /**

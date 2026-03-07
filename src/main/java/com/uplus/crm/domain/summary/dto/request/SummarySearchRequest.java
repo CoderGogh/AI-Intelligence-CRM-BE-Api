@@ -7,72 +7,76 @@ import lombok.Setter;
 import org.springframework.format.annotation.DateTimeFormat;
 
 /**
- * GET /api/summaries 검색 파라미터
+ * GET /api/summaries 검색 파라미터 (V26 필터 구성 기준)
  *
- * <p>기본 검색: keyword, 상담 기간, 담당 상담사, 카테고리, 채널</p>
- * <p>상세 검색: IAM 3종, 고객 4종, 위험 유형 체크리스트, 상담사 이름</p>
+ * <p><b>Search Type (ES 활용, 동의어·추천어 지원)</b></p>
+ * <ul>
+ *   <li>{@code keyword}       : 자율검색 — 상담내용/상품명 전체 OR (ES → consultId 조인)</li>
+ *   <li>{@code consultantName}: 담당 상담사 이름 부분 일치</li>
+ *   <li>{@code customerName}  : 고객 이름 부분 일치</li>
+ *   <li>{@code productName}   : 상품명 부분 일치 (resultProducts 배열 검색)</li>
+ * </ul>
+ *
+ * <p><b>Toggle Type (DB/MongoDB 조건절)</b></p>
+ * <ul>
+ *   <li>{@code from} / {@code to}  : 상담 기간 (yyyy-MM-dd)</li>
+ *   <li>{@code categoryName}       : 상담 카테고리명 (large/medium/small OR)</li>
+ *   <li>{@code channel}            : 상담 채널 (CALL / CHATTING)</li>
+ *   <li>{@code customerPhone}      : 고객 연락처 부분 일치</li>
+ *   <li>{@code customerType}       : 고객 유형 (개인 / 법인)</li>
+ *   <li>{@code customerGrades}     : 고객 등급 복수 선택 (VVIP, VIP, DIAMOND)</li>
+ *   <li>{@code riskTypes}          : 위험 유형 복수 선택, OR 조건</li>
+ *   <li>{@code satisfactionScore}  : 고객만족도 최소값 (1~5, 이상 검색)</li>
+ * </ul>
  */
 @Getter
 @Setter
 public class SummarySearchRequest {
 
-  // ── 기본 검색 ──────────────────────────────────────────────────────────────
+    // ── Search Type (ES 활용) ───────────────────────────────────────────────
 
-  /** 통합 키워드 (iam.issue / action / memo / summary.content / keywords 전체 OR 검색) */
-  private String keyword;
+    /** 자율검색 — ES 동의어·추천어 적용, consultId 조인 후 MongoDB 필터 */
+    private String keyword;
 
-  /** 상담 시작일 (포함) */
-  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-  private LocalDate from;
+    /** 담당 상담사 이름 부분 검색 (agent.name) */
+    private String consultantName;
 
-  /** 상담 종료일 (포함) */
-  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-  private LocalDate to;
+    /** 고객 이름 부분 검색 (customer.name) */
+    private String customerName;
 
-  /** 담당 상담사 ID */
-  private Long agentId;
+    /** 상품명 부분 검색 (resultProducts.subscribed / canceled 배열) */
+    private String productName;
 
-  /** 상담 카테고리 코드 (예: M_FEE_01) */
-  private String categoryCode;
+    // ── Toggle Type (기간) ──────────────────────────────────────────────────
 
-  /** 상담 채널 (PHONE / CHAT) */
-  private String channel;
+    /** 상담 시작일 (포함) */
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    private LocalDate from;
 
-  // ── IAM 기반 상세 검색 ──────────────────────────────────────────────────────
+    /** 상담 종료일 (포함) */
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    private LocalDate to;
 
-  /** 상담 키워드 — iam.issue 부분 검색 */
-  private String iamIssue;
+    // ── Toggle Type (정형 조건) ─────────────────────────────────────────────
 
-  /** 상담 조치사항 — iam.action 부분 검색 */
-  private String iamAction;
+    /** 상담 카테고리명 — category.large / medium / small OR 검색 */
+    private String categoryName;
 
-  /** 상담 특이사항 — iam.memo 부분 검색 */
-  private String iamMemo;
+    /** 상담 채널 — CALL 또는 CHATTING */
+    private String channel;
 
-  // ── 고객 기반 상세 검색 ─────────────────────────────────────────────────────
+    /** 고객 연락처 부분 일치 */
+    private String customerPhone;
 
-  /** 고객 이름 (부분 일치, 성 제외 이름만 입력 가능) */
-  private String customerName;
+    /** 고객 유형 — 개인 또는 법인 */
+    private String customerType;
 
-  /** 고객 연락처 (부분 일치) */
-  private String customerPhone;
+    /** 고객 등급 복수 선택 — IN 조건 (VVIP / VIP / DIAMOND) */
+    private List<String> customerGrades;
 
-  /** 고객 유형 (개인 / 법인) */
-  private String customerType;
+    /** 위험 유형 복수 선택 — riskFlags 배열 OR 조건 */
+    private List<String> riskTypes;
 
-  /** 고객 등급 — 복수 선택 (VVIP / VIP / DIAMOND) */
-  private List<String> customerGrades;
-
-  // ── 위험 유형 체크리스트 ────────────────────────────────────────────────────
-
-  /**
-   * 위험 유형 — 복수 선택, OR 조건 적용
-   * 예: [폭언/욕설, 해지위험, 반복민원, 사기의심, 정책악용, 과도한 보상 요구, 피싱피해]
-   */
-  private List<String> riskTypes;
-
-  // ── 상담사 이름 검색 ────────────────────────────────────────────────────────
-
-  /** 상담사 이름 부분 검색 */
-  private String agentName;
+    /** 고객만족도 최소값 (1~5) — customer.satisfiedScore >= satisfactionScore */
+    private Integer satisfactionScore;
 }

@@ -61,29 +61,31 @@ public class SummaryController {
   @Operation(
       summary = "상담요약 목록 검색",
       description = """
-          복합 조건으로 상담 요약문을 검색합니다.
+          Hybrid 검색(ES + MongoDB)으로 상담 요약문을 검색합니다.
 
-          **기본 검색**
-          - `keyword` : iam.issue / action / memo / summary.content / keywords 전체 OR 검색
-          - `from` / `to` : 상담 기간 (yyyy-MM-dd)
-          - `agentId` : 담당 상담사 ID
-          - `agentName` : 담당 상담사 이름 (부분 일치)
-          - `categoryCode` : 상담 카테고리 코드 (예: M_FEE_01)
-          - `channel` : 상담 채널 (PHONE / CHAT)
+          **Search Type (ES 동의어·추천어 적용)**
+          - `keyword`        : 자율검색 — ES로 consultId 조인 후 MongoDB 필터 (fallback: MongoDB regex)
+          - `consultantName` : 담당 상담사 이름 부분 일치
+          - `customerName`   : 고객 이름 부분 일치
+          - `productName`    : 상품명 부분 일치 (가입/해지 상품 배열)
 
-          **IAM 기반 상세 검색**
-          - `iamIssue` : 상담 키워드 (iam.issue 부분 일치)
-          - `iamAction` : 상담 조치사항 (iam.action 부분 일치)
-          - `iamMemo` : 상담 특이사항 (iam.memo 부분 일치)
+          **Toggle Type (MongoDB 조건절)**
+          - `from` / `to`         : 상담 기간 (yyyy-MM-dd)
+          - `categoryName`        : 상담 카테고리명 (large/medium/small OR 검색)
+          - `channel`             : 상담 채널 (CALL / CHATTING)
+          - `customerPhone`       : 고객 연락처 부분 일치
+          - `customerType`        : 고객 유형 (개인 / 법인)
+          - `customerGrades`      : 고객 등급 복수 선택 (VVIP, VIP, DIAMOND)
+          - `riskTypes`           : 위험 유형 복수 선택, OR (폭언/욕설, 해지위험, 반복민원 등)
+          - `satisfactionScore`   : 고객만족도 최소값 1~5 (이상 검색)
 
-          **고객 기반 상세 검색**
-          - `customerName` : 고객 이름 (성 제외 이름만 입력 가능)
-          - `customerPhone` : 고객 연락처 (부분 일치)
-          - `customerType` : 고객 유형 (개인 / 법인)
-          - `customerGrades` : 고객 등급 복수 선택 (VVIP, VIP, DIAMOND)
-
-          **위험 유형 체크리스트** (OR 조건)
-          - `riskTypes` : 폭언/욕설, 사기의심, 정책악용, 과도한 보상 요구, 반복민원, 해지위험, 피싱피해
+          **응답 포함 필드**
+          - consultId, consultedAt, channel
+          - customerName, customerType, customerGrade
+          - categoryCode, categoryLarge, categoryMedium, categorySmall
+          - agentId, agentName, riskFlags
+          - summaryContent (미리보기 150자), summaryStatus
+          - iamMatchRate, defenseAttempted
           """)
   @GetMapping
   public Page<ConsultationSummaryListResponse> list(
