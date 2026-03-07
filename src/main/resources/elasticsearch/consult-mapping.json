@@ -50,6 +50,11 @@
       "format": "yyyy-MM-dd'T'HH:mm:ss"
     },
     "hasGreeting": { "type": "boolean" },
-    "hasFarewell": { "type": "boolean" }
+    "hasFarewell": { "type": "boolean" },
+    "rawText": {
+      "type": "text",
+      "analyzer": "korean_index_analyzer",
+      "search_analyzer": "korean_search_analyzer"
+    }
   }
 }

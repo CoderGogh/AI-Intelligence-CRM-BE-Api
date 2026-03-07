@@ -87,4 +87,12 @@ public class ConsultDoc {
     /** 마무리 인사 포함 여부 (응대품질 분석용) — 저장 시 자동 감지 */
     @Field(type = FieldType.Boolean)
     private Boolean hasFarewell;
+
+    /**
+     * 상담 원문 텍스트 — consultation_raw_texts.raw_text_json 에서 추출한 평문.
+     * 인덱싱 시 {@code ConsultSearchService.extractRawText(rawTextJson)} 으로 변환하여 설정.
+     * keyword 검색 대상 필드에 포함됨 (가중치 1.0).
+     */
+    @Field(type = FieldType.Text, analyzer = "korean_index_analyzer", searchAnalyzer = "korean_search_analyzer")
+    private String rawText;
 }

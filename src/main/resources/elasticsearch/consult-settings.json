@@ -42,6 +42,16 @@
           "analysis_synonym_search_filter",
           "analysis_stop_filter"
         ]
+      },
+
+      "edge_ngram_index_analyzer": {
+        "type": "custom",
+        "tokenizer": "nori_mixed_tokenizer",
+        "filter": [
+          "nori_readingform",
+          "lowercase",
+          "edge_ngram_filter"
+        ]
       }
 
     },
@@ -92,6 +102,13 @@
         "type": "stop",
         "stopwords_path": "analysis/analysis_stopwords.txt",
         "ignore_case": true
+      },
+
+      "edge_ngram_filter": {
+        "type": "edge_ngram",
+        "min_gram": 2,
+        "max_gram": 10,
+        "token_chars": ["letter", "digit"]
       }
 
     }

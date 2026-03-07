@@ -1,9 +1,12 @@
 package com.uplus.crm.domain.elasticsearch.service;
 
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uplus.crm.domain.elasticsearch.entity.ConsultDoc;
 import com.uplus.crm.domain.elasticsearch.repository.ConsultElasticRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
@@ -15,14 +18,18 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ConsultSearchService {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
@@ -34,12 +41,26 @@ public class ConsultSearchService {
             "감사합니다", "감사드립니다", "수고하세요", "수고하셨습니다",
             "고맙습니다", "즐거운 하루", "좋은 하루", "안녕히 계세요");
 
+    /**
+     * 키워드 검색 대상 필드 및 가중치.
+     *
+     * <ul>
+     *   <li>iamIssue^3.0  — AI 추출 상담 이슈 (가장 핵심)</li>
+     *   <li>iamAction^2.0 — AI 추출 조치사항</li>
+     *   <li>content^1.5   — 상담 요약 내용</li>
+     *   <li>iamMemo^1.0   — 상담 특이사항</li>
+     *   <li>allText^1.0   — 통합 텍스트</li>
+     *   <li>rawText^1.0   — 상담 원문 (consultation_raw_texts.raw_text_json 평문 변환)</li>
+     *   <li>customerName  — 고객명</li>
+     * </ul>
+     */
     private static final List<String> FULL_FIELDS = List.of(
             "iamIssue^3.0",
             "iamAction^2.0",
             "content^1.5",
             "iamMemo",
             "allText",
+            "rawText",
             "customerName"
     );
 
@@ -48,20 +69,71 @@ public class ConsultSearchService {
 
     /**
      * 상담 데이터 저장 (Indexing).
-     * 저장 전에 인삿말·마무리 인사 포함 여부를 자동 감지하여
-     * {@code hasGreeting}·{@code hasFarewell} 필드를 설정한다.
+     *
+     * <p>저장 전 자동 처리:</p>
+     * <ul>
+     *   <li>인삿말·마무리 인사 포함 여부 감지 → {@code hasGreeting}, {@code hasFarewell}</li>
+     *   <li>{@code rawText} 가 설정되지 않았으면 {@code content + allText} 로 fallback</li>
+     * </ul>
+     *
+     * <p><b>rawText 설정 방법 (인덱싱 호출 측)</b></p>
+     * <pre>
+     *   String plain = consultSearchService.extractPlainTextFromJson(rawTextJson);
+     *   consultDoc.setRawText(plain);
+     *   consultSearchService.saveConsultation(consultDoc);
+     * </pre>
      */
     public void saveConsultation(ConsultDoc consultDoc) {
-        String text = buildRawText(consultDoc);
-        consultDoc.setHasGreeting(containsAny(text, GREETING_PATTERNS));
-        consultDoc.setHasFarewell(containsAny(text, FAREWELL_PATTERNS));
+        String greetingTarget = buildGreetingTarget(consultDoc);
+        consultDoc.setHasGreeting(containsAny(greetingTarget, GREETING_PATTERNS));
+        consultDoc.setHasFarewell(containsAny(greetingTarget, FAREWELL_PATTERNS));
         consultElasticRepository.save(consultDoc);
     }
 
-    private String buildRawText(ConsultDoc doc) {
+    /**
+     * {@code consultation_raw_texts.raw_text_json} 을 ES 검색용 평문으로 변환.
+     *
+     * <p>JSON 구조가 어떻게 되어 있든 모든 문자열 값(value)을 재귀적으로 추출하여
+     * 공백으로 연결한다. 파싱 실패 시 원본 문자열을 그대로 반환.</p>
+     *
+     * <pre>
+     * 예시 JSON:
+     * {"turns": [{"speaker":"agent","text":"안녕하세요"}, {"speaker":"customer","text":"해지하고 싶어요"}]}
+     * → "안녕하세요 해지하고 싶어요"
+     * </pre>
+     *
+     * @param rawTextJson consultation_raw_texts.raw_text_json
+     * @return 검색 가능한 평문 (null/빈값이면 빈 문자열)
+     */
+    public String extractPlainTextFromJson(String rawTextJson) {
+        if (rawTextJson == null || rawTextJson.isBlank()) return "";
+        try {
+            JsonNode root = OBJECT_MAPPER.readTree(rawTextJson);
+            StringBuilder sb = new StringBuilder();
+            collectStrings(root, sb);
+            return sb.toString().trim();
+        } catch (Exception e) {
+            log.warn("[ConsultSearch] rawTextJson 파싱 실패 — 원본 반환: {}", e.getMessage());
+            return rawTextJson;
+        }
+    }
+
+    /** JSON 노드를 재귀 탐색하여 모든 문자열 값을 추출 */
+    private void collectStrings(JsonNode node, StringBuilder sb) {
+        if (node.isTextual()) {
+            sb.append(node.asText()).append(' ');
+        } else if (node.isArray()) {
+            node.forEach(child -> collectStrings(child, sb));
+        } else if (node.isObject()) {
+            node.fields().forEachRemaining(entry -> collectStrings(entry.getValue(), sb));
+        }
+    }
+
+    private String buildGreetingTarget(ConsultDoc doc) {
         StringBuilder sb = new StringBuilder();
         if (doc.getContent() != null)  sb.append(doc.getContent()).append(' ');
-        if (doc.getAllText() != null)   sb.append(doc.getAllText());
+        if (doc.getAllText() != null)   sb.append(doc.getAllText()).append(' ');
+        if (doc.getRawText() != null)   sb.append(doc.getRawText());
         return sb.toString();
     }
 
@@ -71,36 +143,70 @@ public class ConsultSearchService {
     }
 
     /**
-     * 키워드로 ES 검색 후 consultId 목록 반환 (MongoDB Hybrid 조인용).
+     * 복합 키워드 교차 검색 후 consultId 목록 반환 (MongoDB Hybrid 조인용).
      *
+     * <p><b>토큰화 전략</b></p>
      * <ul>
-     *   <li>동의어 사전·형태소 분석 적용 (BestFields + Phrase 조합)</li>
-     *   <li>consultId가 null인 ConsultDoc(테스트 데이터 등)은 결과에서 제외</li>
-     *   <li>비어 있으면 호출 측에서 MongoDB regex fallback 처리</li>
+     *   <li>공백 분리 → 각 토큰을 별개의 {@code must} 절로 처리 (AND 조건)</li>
+     *   <li>단일 토큰: BestFields + Phrase 조합 (기존 고정밀 방식)</li>
+     *   <li>복수 토큰: 토큰별 must[multi_match(all_fields)] → 교집합 반환</li>
      * </ul>
      *
-     * @param keyword 검색어
+     * <p><b>예시</b></p>
+     * <pre>
+     *   "그만 아이폰"
+     *   → must[ multi_match("그만",  [content, allText, iamIssue, ...]) ]
+     *     must[ multi_match("아이폰", [content, allText, iamIssue, ...]) ]
+     *   → 두 단어 모두 문서 내 어딘가에 존재하는 상담만 반환
+     * </pre>
+     *
+     * @param keyword 검색어 (공백 구분 복합 키워드 가능)
      * @return 매칭된 consultId 목록 (최대 1000건)
      */
     public List<Long> searchConsultIdsByKeyword(String keyword) {
-        NativeQuery query = NativeQuery.builder()
+        List<String> tokens = tokenize(keyword);
+        if (tokens.isEmpty()) return List.of();
+
+        NativeQuery query = (tokens.size() == 1)
+                ? buildSingleTokenQuery(tokens.get(0))
+                : buildCrossTokenQuery(tokens);
+
+        return extractConsultIds(elasticsearchOperations.search(query, ConsultDoc.class));
+    }
+
+    /**
+     * 단일 토큰: BestFields + Phrase 조합 쿼리.
+     * 동의어 사전 + 오타 허용(fuzziness) + 구문 일치(Phrase) boost.
+     */
+    private NativeQuery buildSingleTokenQuery(String token) {
+        return NativeQuery.builder()
                 .withQuery(q -> q
                         .bool(b -> b
+                                // 주 검색: 전 필드 BestFields (오타 허용)
                                 .should(s -> s
                                         .multiMatch(m -> m
                                                 .fields(FULL_FIELDS)
-                                                .query(keyword)
+                                                .query(token)
                                                 .type(TextQueryType.BestFields)
                                                 .fuzziness("AUTO")
                                                 .minimumShouldMatch("1")
                                         )
                                 )
+                                // 구문 검색: 정확한 순서 매칭 시 boost
                                 .should(s -> s
                                         .multiMatch(m -> m
                                                 .fields("iamIssue^4.0", "iamAction^2.5", "content^2.0", "allText")
-                                                .query(keyword)
+                                                .query(token)
                                                 .type(TextQueryType.Phrase)
                                                 .boost(2.0f)
+                                        )
+                                )
+                                // 부분 일치: prefix 검색 (edge n-gram 미적용 환경 보완)
+                                .should(s -> s
+                                        .multiMatch(m -> m
+                                                .fields("iamIssue^2.0", "iamAction^1.5", "content^1.0", "allText")
+                                                .query(token)
+                                                .type(TextQueryType.PhrasePrefix)
                                         )
                                 )
                                 .minimumShouldMatch("1")
@@ -108,8 +214,64 @@ public class ConsultSearchService {
                 )
                 .withPageable(PageRequest.of(0, 1000))
                 .build();
+    }
 
-        return toList(elasticsearchOperations.search(query, ConsultDoc.class)).stream()
+    /**
+     * 복수 토큰 교차 AND 쿼리.
+     *
+     * <p>각 토큰이 {@code must} 절로 변환되어 모든 토큰이 문서 내에 존재해야 함.
+     * 각 {@code must} 내부는 전 필드 OR 검색(multi_match BestFields).</p>
+     *
+     * <pre>
+     * bool: {
+     *   must: [
+     *     multi_match(token1, all_fields),  // 토큰1: 어느 필드든 존재해야 함
+     *     multi_match(token2, all_fields),  // 토큰2: 어느 필드든 존재해야 함
+     *   ]
+     * }
+     * </pre>
+     */
+    private NativeQuery buildCrossTokenQuery(List<String> tokens) {
+        return NativeQuery.builder()
+                .withQuery(q -> q
+                        .bool(b -> {
+                            tokens.forEach(token ->
+                                    b.must(m -> m
+                                            .multiMatch(mm -> mm
+                                                    .fields(FULL_FIELDS)
+                                                    .query(token)
+                                                    .type(TextQueryType.BestFields)
+                                                    .fuzziness("AUTO")
+                                                    .minimumShouldMatch("1")
+                                            )
+                                    )
+                            );
+                            return b;
+                        })
+                )
+                .withPageable(PageRequest.of(0, 1000))
+                .build();
+    }
+
+    /**
+     * 공백 기준 토큰화.
+     * - 빈 문자열 제거
+     * - 중복 제거
+     * - 불용어 처리는 ES 분석기 위임 (stopwords.txt)
+     */
+    private List<String> tokenize(String keyword) {
+        if (keyword == null || keyword.isBlank()) return List.of();
+        return Arrays.stream(keyword.trim().split("[\\s　]+"))
+                .map(String::trim)
+                .filter(t -> !t.isBlank())
+                .distinct()
+                .toList();
+    }
+
+    /** SearchHits → consultId 목록 추출 */
+    private List<Long> extractConsultIds(SearchHits<ConsultDoc> hits) {
+        return hits.stream()
+                .map(SearchHit::getContent)
                 .map(ConsultDoc::getConsultId)
                 .filter(Objects::nonNull)
                 .distinct()
