@@ -13,4 +13,7 @@ public interface ManualRepository extends JpaRepository<Manual, Integer> {
 
     // 카테고리별 전체 이력 조회
     List<Manual> findAllByCategoryPolicy_CategoryCodeOrderByCreatedAtDesc(String categoryCode);
+   
+    //추가: 전체 조회 (날짜 최신순) ⭐
+    List<Manual> findAllByOrderByCreatedAtDesc();
 }

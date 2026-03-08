@@ -2,8 +2,10 @@ package com.uplus.crm.domain.manual.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import com.uplus.crm.common.exception.BusinessException;
 import com.uplus.crm.common.exception.ErrorCode;
 import com.uplus.crm.domain.account.entity.Employee;
@@ -11,9 +13,11 @@ import com.uplus.crm.domain.account.repository.mysql.EmployeeRepository;
 import com.uplus.crm.domain.consultation.entity.ConsultationCategoryPolicy;
 import com.uplus.crm.domain.consultation.repository.ConsultationCategoryRepository;
 import com.uplus.crm.domain.manual.dto.request.ManualRequest;
+import com.uplus.crm.domain.manual.dto.request.ManualUpdateRequest;
 import com.uplus.crm.domain.manual.dto.response.ManualResponse;
 import com.uplus.crm.domain.manual.entity.Manual;
 import com.uplus.crm.domain.manual.repository.ManualRepository;
+
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -24,7 +28,7 @@ public class ManualService {
     private final ConsultationCategoryRepository policyRepository;
     private final EmployeeRepository employeeRepository;
 
-    /** 1. 생성 */
+    /** 1. 생성 (Create) */
     @Transactional
     public void createManual(ManualRequest request, Integer empId) {
         ConsultationCategoryPolicy policy = policyRepository.findById(request.categoryCode())
@@ -52,9 +56,9 @@ public class ManualService {
         manualRepository.save(manual);
     }
 
-    /** 2. 수정 */
+    /** 2. 수정 (Update) */
     @Transactional
-    public void updateManual(Integer manualId, ManualRequest request) {
+    public void updateManual(Integer manualId, ManualUpdateRequest request) {
         Manual manual = manualRepository.findById(manualId)
             .orElseThrow(() -> new BusinessException(ErrorCode.MANUAL_NOT_FOUND));
         
@@ -63,15 +67,24 @@ public class ManualService {
         manual.setUpdatedAt(LocalDateTime.now());
     }
 
-    /** 3. 조회 (목록) */
+    /** 3. 조회 (Read): 카테고리 코드가 없으면 전체 조회 ⭐ */
     public List<ManualResponse> getHistory(String categoryCode) {
-        return manualRepository.findAllByCategoryPolicy_CategoryCodeOrderByCreatedAtDesc(categoryCode)
-            .stream()
+        List<Manual> manuals;
+        
+        if (categoryCode == null || categoryCode.isBlank()) {
+            // 카테고리 코드가 비어있으면 전체 조회 (Repository에 findAllByOrderByCreatedAtDesc 추가 필요)
+            manuals = manualRepository.findAllByOrderByCreatedAtDesc();
+        } else {
+            // 카테고리 코드가 있으면 해당 카테고리만 조회
+            manuals = manualRepository.findAllByCategoryPolicy_CategoryCodeOrderByCreatedAtDesc(categoryCode);
+        }
+
+        return manuals.stream()
             .map(ManualResponse::from)
             .toList();
     }
 
-    /** 4. 비활성화 */
+    /** 4. 비활성화 (Deactivate) */
     @Transactional
     public void deactivateManual(Integer manualId) {
         Manual manual = manualRepository.findById(manualId)
@@ -80,7 +93,7 @@ public class ManualService {
         manual.setUpdatedAt(LocalDateTime.now());
     }
 
-    /** 5. 활성화 */
+    /** 5. 활성화 (Activate) */
     @Transactional
     public void activateManual(Integer manualId) {
         Manual manual = manualRepository.findById(manualId)
