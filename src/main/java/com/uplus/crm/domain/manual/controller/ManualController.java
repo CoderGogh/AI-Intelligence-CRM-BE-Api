@@ -1,19 +1,11 @@
 package com.uplus.crm.domain.manual.controller;
 
 import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.uplus.crm.common.security.CustomUserDetails;
 import com.uplus.crm.domain.manual.dto.request.ManualRequest;
@@ -26,9 +18,9 @@ import lombok.RequiredArgsConstructor;
 
 @Tag(name = "Admin - Manual Management", description = "관리자용 매뉴얼(채점 기준) 관리 API")
 @RestController
-@RequestMapping("/api/admin/manuals") // 경로 일관성 유지
+@RequestMapping("/api/admin/manuals")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')") // 클래스 전체에 관리자 권한 적용
+@PreAuthorize("hasRole('ADMIN')")
 public class ManualController {
 
     private final ManualService manualService;
@@ -37,19 +29,19 @@ public class ManualController {
     @PostMapping
     public ResponseEntity<Void> createManual(
             @RequestBody ManualRequest request,
-            @AuthenticationPrincipal CustomUserDetails userDetails // 로그인한 유저 정보 주입 ⭐
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-    	manualService.createManual(request, userDetails.getEmpId());
+        manualService.createManual(request, userDetails.getEmpId());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @Operation(summary = "매뉴얼 내용 수정", description = "기존 매뉴얼의 제목과 내용을 수정한다.")
-    @PutMapping("/{id}")
+    @PutMapping("/{manualId}")
     public ResponseEntity<Void> updateManual(
-            @PathVariable("id") Integer id,
+            @PathVariable("manualId") Integer manualId, 
             @RequestBody ManualRequest request
     ) {
-        manualService.updateManual(id, request);
+        manualService.updateManual(manualId, request);
         return ResponseEntity.ok().build();
     }
 
@@ -62,16 +54,16 @@ public class ManualController {
     }
 
     @Operation(summary = "매뉴얼 수동 비활성화", description = "활성화된 매뉴얼을 사용 중지 상태로 변경한다.")
-    @PatchMapping("/{id}/deactivate")
-    public ResponseEntity<Void> deactivateManual(@PathVariable("id") Integer id) {
-        manualService.deactivateManual(id);
+    @PatchMapping("/{manualId}/deactivate") 
+    public ResponseEntity<Void> deactivateManual(@PathVariable("manualId") Integer manualId) {
+        manualService.deactivateManual(manualId);
         return ResponseEntity.ok().build();
     }
 
     @Operation(summary = "매뉴얼 수동 활성화", description = "비활성화된 매뉴얼을 현재 사용 중인 매뉴얼로 변경한다.")
-    @PatchMapping("/{id}/activate")
-    public ResponseEntity<Void> activateManual(@PathVariable("id") Integer id) {
-        manualService.activateManual(id);
+    @PatchMapping("/{manualId}/activate")
+    public ResponseEntity<Void> activateManual(@PathVariable("manualId") Integer manualId) {
+        manualService.activateManual(manualId);
         return ResponseEntity.ok().build();
     }
 }
