@@ -13,12 +13,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * MySQL(consultation_raw_texts) → ES(consult-index) 동기화 API.
- *
- * <p>동기화 후 {@code /elasticsearch/consult/analysis/quality} 에서
- * 실제 대화원문 기반 응대품질 분석 결과를 확인할 수 있다.</p>
- */
 @Tag(name = "① ES 셋업")
 @RestController
 @RequestMapping("/admin/es")
@@ -29,19 +23,25 @@ public class ConsultIndexSyncController {
     private final ConsultIndexSyncService syncService;
 
     @Operation(
-            tags = {"① ES 셋업"},
-            summary = "[셋업 Step 2A] 실제 대화원문 ES 동기화 — 운영 데이터 사용 시",
+            summary = "[셋업 Step 2] 로컬 DB 전체 데이터 ES 동기화",
             description = """
-                    MySQL `consultation_raw_texts`의 **실제 상담 대화원문**을 ES에 동기화합니다.
-                    더미 데이터가 아닌 실제 운영 데이터로 분석하려면 이 API를 사용하세요.
+                    Batch 프로젝트로 생성된 로컬 MySQL + MongoDB 데이터를 ES에 동기화합니다.
+                    최초 세팅 시 또는 사전 변경 후 인덱스 재생성 시에 호출합니다.
 
-                    **파이프라인**
-                    1. MySQL `consultation_results` 전체 (100건 단위 페이징)
-                    2. MySQL `consultation_raw_texts` → 전체 대화 평문 (검색용 rawText)
-                    3. 상담사 발화만 추출 → hasGreeting / hasFarewell 정확 감지
-                    4. MongoDB `consultation_summary` → 감정·위험도·고객정보 보완
-                    5. ES upsert (consultId = 문서 ID → 재호출 시 중복 없음)
+                    [로직 순서]
+                    1. MySQL consultation_results 전체 조회 (100건 단위 페이징)
+                    2. MySQL consultation_raw_texts 조회 → 전체 대화 평문 추출 (rawText)
+                    3. 상담사 발화만 별도 추출 → hasGreeting / hasFarewell 자동 감지
+                    4. MongoDB consultation_summary 조회 → sentiment, riskFlags, 고객정보 보완
+                    5. ES consult-index에 upsert (consultId = 문서 ID, 재호출 시 중복 없음)
 
+                    [참조 DB]
+                    읽기: MySQL consultation_results (iamIssue, iamAction, iamMemo, createdAt)
+                    읽기: MySQL consultation_raw_texts (raw_text_json)
+                    읽기: MongoDB consultation_summary (sentiment, riskFlags, customer, keywords)
+                    쓰기: Elasticsearch consult-index
+
+                    [skip 조건]
                     consultation_raw_texts 가 없는 건은 자동으로 건너뜁니다.
                     """)
     @PostMapping("/sync")
@@ -51,15 +51,19 @@ public class ConsultIndexSyncController {
     }
 
     @Operation(
-            tags = {"① ES 셋업"},
             summary = "단일 상담 ES 재동기화",
             description = """
                     특정 consultId 1건만 ES에 재동기화합니다.
-                    전체 동기화 없이 특정 건의 데이터만 갱신할 때 사용합니다.
+                    특정 상담 데이터만 수정되었거나 동기화 오류가 발생한 경우 사용합니다.
+
+                    [참조 DB]
+                    읽기: MySQL consultation_results, consultation_raw_texts
+                    읽기: MongoDB consultation_summary
+                    쓰기: Elasticsearch consult-index (해당 consultId 문서만 갱신)
                     """)
     @PostMapping("/sync/{consultId}")
     public ResponseEntity<SyncResult> syncOne(
-            @Parameter(description = "동기화할 상담 ID", example = "1001")
+            @Parameter(description = "동기화할 상담 ID (MySQL consultation_results.consult_id)", example = "1001")
             @PathVariable Long consultId) {
         SyncResult result = syncService.syncOne(consultId);
         return ResponseEntity.ok(result);

@@ -30,7 +30,7 @@ public class DictionaryUpdateController {
     private final DictionaryUpdateService dictionaryUpdateService;
 
     @Operation(
-            tags = {"② ES 사전 관리"},
+
             summary = "MongoDB 키워드 자동 추출 → userdict.txt 추가",
             description = """
                     MongoDB `consultation_summary`에서 자주 등장하는 키워드를 추출하여
@@ -42,8 +42,8 @@ public class DictionaryUpdateController {
                     2. 신규 키워드를 `userdict.txt`에 추가 기록
                     3. ES `_reload_search_analyzers` 호출
 
-                    ⚠️ `dictionary.output-path` 미설정 시 파일 기록 없이 리로드만 실행됩니다.
-                    ⚠️ `analysis_synonyms.txt` 변경 후에는 이 API가 아닌 인덱스 재생성이 필요합니다.
+                    `dictionary.output-path` 미설정 시 파일 기록 없이 리로드만 실행됩니다.
+                    `analysis_synonyms.txt` 변경 후에는 이 API가 아닌 인덱스 재생성이 필요합니다.
                     """)
     @PostMapping("/update")
     public ResponseEntity<Map<String, Object>> update() {
@@ -56,7 +56,7 @@ public class DictionaryUpdateController {
     }
 
     @Operation(
-            tags = {"② ES 사전 관리"},
+
             summary = "추출될 키워드 미리보기 (파일 변경 없음)",
             description = """
                     MongoDB에서 키워드를 추출하여 미리보기만 반환합니다.
@@ -75,13 +75,13 @@ public class DictionaryUpdateController {
     }
 
     @Operation(
-            tags = {"② ES 사전 관리"},
+
             summary = "ES 분석기만 리로드 (search-time 필터 한정)",
             description = """
                     ES `_reload_search_analyzers`를 호출합니다.
                     `synonym_graph` 검색 분석기만 갱신됩니다.
 
-                    ⚠️ `analysis_synonyms.txt` 변경 후에는 index-time 필터도 바뀌므로
+                    `analysis_synonyms.txt` 변경 후에는 index-time 필터도 바뀌므로
                     이 API만으로는 부족합니다. `POST /es-test/recreate-index` 를 사용하세요.
                     """)
     @PostMapping("/reload")
