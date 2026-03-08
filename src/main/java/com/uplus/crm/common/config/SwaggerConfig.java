@@ -5,8 +5,11 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.tags.Tag;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.List;
 
 @Configuration
 public class SwaggerConfig {
@@ -28,7 +31,30 @@ public class SwaggerConfig {
                     .title("고객 상담 기록 관리 서비스 API")
                     .description("고객 상담 기록 관리 서비스의 API입니다. 구글 로그인을 통해 토큰을 발급받으세요.")
                     .version("1.0.0"))
-            .addSecurityItem(securityRequirement) // 모든 API 옆에 자물쇠 아이콘 표시
-            .components(components);
+            .addSecurityItem(securityRequirement)
+            .components(components)
+            // ── Elasticsearch 관련 태그 노출 순서 고정 ──────────────────────────
+            .tags(List.of(
+                    new Tag().name("① ES 셋업")
+                            .description("""
+                                    최초 1회 또는 사전 변경 시에만 사용합니다.
+                                    평소 앱 재시작 시에는 호출할 필요가 없습니다.
+
+                                    [실행 순서]
+                                    1. (사전 변경 시) POST /es-test/recreate-index  → 인덱스 재생성
+                                    2-A. POST /admin/es/sync                        → 실제 대화원문 데이터 적재
+                                    2-B. POST /elasticsearch/consult/test-data      → 더미 데이터 적재 (테스트용)
+                                    """),
+                    new Tag().name("② ES 사전 관리")
+                            .description("""
+                                    analysis_synonyms.txt 등 사전 파일을 수정한 후 사용합니다.
+                                    MongoDB 상담 데이터에서 신규 키워드를 자동 추출하여 userdict.txt에 추가합니다.
+                                    """),
+                    new Tag().name("③ ES 분석")
+                            .description("""
+                                    실제 운영에서 사용하는 분석 API입니다.
+                                    POST /admin/es/sync 로 실제 대화원문을 적재한 후 호출해야 정확한 결과가 나옵니다.
+                                    """)
+            ));
   }
 }

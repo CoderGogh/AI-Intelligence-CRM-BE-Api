@@ -6,6 +6,7 @@ import com.uplus.crm.domain.summary.document.ConsultationSummary;
 import com.uplus.crm.domain.summary.repository.SummaryRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+@Tag(name = "① ES 셋업")
 @RestController
 @RequestMapping("/elasticsearch/consult")
 @RequiredArgsConstructor
@@ -23,30 +25,19 @@ public class ConsultSearchControllerTest {
     private final SummaryRepository summaryRepository;
 
     @Operation(
-        summary = "[Step 1] 테스트 데이터 적재",
+        tags = {"① ES 셋업"},
+        summary = "더미 데이터 적재 (테스트 전용, 최초 1회)",
         description = """
-            Elasticsearch consult-index에 샘플 상담 데이터 18건을 저장합니다.
-            검색 API를 테스트하기 전에 반드시 먼저 호출하세요.
+            ES + MongoDB에 샘플 상담 100건을 동시 저장합니다.
+            실제 DB 데이터가 없는 환경에서 검색·분석 API를 테스트할 때 사용합니다.
 
-            적재되는 데이터 목록:
-            - C001: 갤폰/번이/미납 (NEGATIVE, HIGH, riskScore=75)
-            - C002: 아폰/기변/선약 (POSITIVE, NORMAL, riskScore=10)
-            - C003: 해지/kt번이/재약정 (NEGATIVE, URGENT, riskScore=90)
-            - C004: 넷플/결합할인/5G (POSITIVE, LOW, riskScore=5)
-            - C005: 폭언/반복민원 (NEGATIVE, URGENT, riskScore=95)
-            - C006: 갤탭/유심/eSIM (NEUTRAL, NORMAL, riskScore=15)
-            - C007: 셋탑/리모콘/이전설치 (NEUTRAL, NORMAL, riskScore=20)
-            - C008: 디플/티빙/웨이브 (POSITIVE, LOW, riskScore=8)
-            - C009: 와이파이/공유기/속도 (NEGATIVE, HIGH, riskScore=40)
-            - C010: 로밍패스/해외로밍 (POSITIVE, NORMAL, riskScore=5)
-            - C011: 피싱/사기의심 (NEGATIVE, URGENT, riskScore=88)
-            - C012: 소비자원/위약금 (NEGATIVE, URGENT, riskScore=85)
-            - C013: 폰케어/보험 (NEUTRAL, NORMAL, riskScore=25)
-            - C014: VVIP/요금감면/분납 (POSITIVE, LOW, riskScore=5)
-            - C015: 유쓰/너겟/청구서 (NEGATIVE, HIGH, riskScore=55)
-            - C016: 인터넷전화/신규설치/5GB (POSITIVE, LOW, riskScore=5)
-            - C017: 아이들나라/유튜브프리미엄 (POSITIVE, LOW, riskScore=5)
-            - C018: 5G/LTE/통화품질 (NEGATIVE, HIGH, riskScore=45)
+            ⚠️ 실제 운영 데이터가 있다면 POST /admin/es/sync 를 사용하세요.
+            ⚠️ 재호출 시 기존 더미 데이터를 덮어씁니다 (consultId 1001~1100).
+
+            적재 데이터 범위: consultId 1001~1100 (100건)
+            - NEGATIVE/URGENT (riskScore ≥ 85): 해지위협, 폭언, 피싱, 소비자원 위협 등
+            - NEGATIVE/HIGH   (riskScore 40~84): 미납, 와이파이 불만, 통화품질 등
+            - POSITIVE/LOW    (riskScore ≤ 10):  기기변경, OTT, 로밍, 재가입 등
             """
     )
     @PostMapping("/test-data")
@@ -857,20 +848,23 @@ public class ConsultSearchControllerTest {
     // ==================== [분석 전용] 응대품질 분석 API ====================
 
     @Operation(
-        summary = "[분석] 인삿말 여부 기반 응대품질 조회",
+        tags = {"③ ES 분석"},
+        summary = "응대품질 분석 — 인삿말·마무리 인사 누락 상담 조회",
         description = """
-            hasGreeting·hasFarewell 필드로 응대품질 미달 상담을 필터링합니다.
-            저장 시 자동 감지되는 필드입니다.
+            실제 대화원문(consultation_raw_texts)에서 추출한 **상담사 발화** 기준으로
+            인삿말·마무리 인사 포함 여부를 감지하여 응대품질 미달 상담을 반환합니다.
 
-            **감지 패턴**
-            - 인사말: 안녕하세요 / 안녕하십니까 / 반갑습니다 / 좋은 아침
-            - 마무리: 감사합니다 / 감사드립니다 / 수고하세요 / 고맙습니다 / 안녕히 계세요 등
+            ✅ 정확한 결과를 위해 POST /admin/es/sync 를 먼저 실행하세요.
 
-            **활용 예시**
-            - `hasGreeting=false`  → 인사말 없이 시작한 상담 (품질 미달 후보)
-            - `hasFarewell=false`  → 마무리 인사 없이 종료한 상담 (품질 미달 후보)
-            - 둘 다 false          → 인사 완전 미포함 상담 (최우선 관리 대상)
-            - 둘 다 생략           → 전체 상담 반환 (riskScore 내림차순)
+            **파라미터 조합**
+            - `hasGreeting=false`           → 인사말 없이 시작한 상담
+            - `hasFarewell=false`           → 마무리 인사 없이 종료한 상담
+            - `hasGreeting=false&hasFarewell=false` → 둘 다 없는 최우선 관리 대상
+            - 파라미터 생략                 → 전체 상담 (riskScore 내림차순)
+
+            **감지 패턴 (상담사 발화 기준)**
+            - 인사말: 안녕하세요, 안녕하십니까, 반갑습니다 등
+            - 마무리: 감사합니다, 수고하세요, 안녕히 계세요 등
             """
     )
     @GetMapping("/analysis/quality")
@@ -889,23 +883,21 @@ public class ConsultSearchControllerTest {
     }
 
     @Operation(
-        summary = "[분석] 분석용 키워드 검색 (인삿말·응대 어근 제거)",
+        tags = {"③ ES 분석"},
+        summary = "분석용 키워드 검색 — 응대 어근 제거 후 실질 내용 검색",
         description = """
-            `allText.analysis` 서브필드를 대상으로 검색합니다.
-            검색용 `allText`와 달리 다음 토큰이 분석 단계에서 제거됩니다.
+            분석 전용 분석기(`korean_analysis_index_analyzer`)로 인덱싱된 `allText.analysis`
+            서브필드를 검색합니다. 모든 상담에 공통으로 등장하는 응대 어근이 제거되어
+            실질적인 상담 내용 키워드만 매칭됩니다.
 
-            **제거 대상**
-            - 인삿말·마무리말 어근: 안녕, 반갑, 감사, 죄송, 수고, 실례
-            - 일반 응대 어근: 확인, 안내, 처리, 연결, 진행, 설명 (모든 상담에 공통 출현)
-            - 검색 불용어 전체 포함
+            **제거되는 토큰 (analysis_stopwords.txt)**
+            - 인삿말 어근: 안녕, 반갑, 감사, 죄송, 수고, 실례
+            - 공통 응대 어근: 확인, 안내, 처리, 연결, 진행, 설명
 
-            **용도**
-            - 실제 상담 내용(issue/action)에 집중한 키워드 분석
-            - 응대 품질 지표 추출
-            - 유사 상담 군집 분석 (카테고리 미분류 상담 탐지)
-
-            **분석기**: `korean_analysis_index_analyzer` / `korean_analysis_search_analyzer`
-            (decompound_mode: discard + analysis 전용 사전)
+            **활용 예시**
+            - `keyword=미납` → 미납 관련 상담만 정밀 필터링
+            - `keyword=해지위협` → 해지 의도 상담 군집 탐지
+            - `keyword=친절응대` → 응대품질 우수 상담 검색 (분석용 동의어 사전 적용)
             """
     )
     @GetMapping("/analysis/keywords")

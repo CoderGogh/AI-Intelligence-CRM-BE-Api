@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>동기화 후 {@code /elasticsearch/consult/analysis/quality} 에서
  * 실제 대화원문 기반 응대품질 분석 결과를 확인할 수 있다.</p>
  */
-@Tag(name = "ES Index Sync", description = "대화원문 → ES 동기화 (관리자 전용)")
+@Tag(name = "① ES 셋업")
 @RestController
 @RequestMapping("/admin/es")
 @RequiredArgsConstructor
@@ -29,22 +29,20 @@ public class ConsultIndexSyncController {
     private final ConsultIndexSyncService syncService;
 
     @Operation(
-            summary = "전체 상담 데이터 ES 동기화",
+            tags = {"① ES 셋업"},
+            summary = "실제 대화원문 ES 동기화 (최초 1회 or 재동기화)",
             description = """
-                    MySQL `consultation_raw_texts`의 실제 대화원문을 읽어 ES `consult-index`에 동기화합니다.
+                    MySQL `consultation_raw_texts`의 **실제 상담 대화원문**을 ES에 동기화합니다.
+                    더미 데이터가 아닌 실제 운영 데이터로 분석하려면 이 API를 사용하세요.
 
                     **파이프라인**
-                    1. MySQL `consultation_results` 전체 조회 (100건 단위 페이징)
-                    2. MySQL `consultation_raw_texts` → 전체 대화 평문 추출 (검색용 `rawText`)
-                    3. 상담사 발화만 별도 추출 → `hasGreeting` / `hasFarewell` 정확 감지
-                    4. MongoDB `consultation_summary` → AI 요약·감정·위험도 보완
-                    5. ES `consult-index` upsert (consultId 기준 중복 방지)
+                    1. MySQL `consultation_results` 전체 (100건 단위 페이징)
+                    2. MySQL `consultation_raw_texts` → 전체 대화 평문 (검색용 rawText)
+                    3. 상담사 발화만 추출 → hasGreeting / hasFarewell 정확 감지
+                    4. MongoDB `consultation_summary` → 감정·위험도·고객정보 보완
+                    5. ES upsert (consultId = 문서 ID → 재호출 시 중복 없음)
 
-                    **skip 조건**: `consultation_raw_texts`가 없는 상담 건은 건너뜁니다.
-
-                    **동기화 후 확인**
-                    - `GET /elasticsearch/consult/analysis/quality?hasGreeting=false`
-                      → 실제 인사말 없이 시작한 상담 조회
+                    consultation_raw_texts 가 없는 건은 자동으로 건너뜁니다.
                     """)
     @PostMapping("/sync")
     public ResponseEntity<SyncResult> syncAll() {
@@ -53,10 +51,11 @@ public class ConsultIndexSyncController {
     }
 
     @Operation(
-            summary = "단일 상담 ES 동기화",
+            tags = {"① ES 셋업"},
+            summary = "단일 상담 ES 재동기화",
             description = """
-                    지정한 consultId 한 건을 ES에 동기화합니다.
-                    대화원문 수정 후 특정 건만 재동기화할 때 사용합니다.
+                    특정 consultId 1건만 ES에 재동기화합니다.
+                    전체 동기화 없이 특정 건의 데이터만 갱신할 때 사용합니다.
                     """)
     @PostMapping("/sync/{consultId}")
     public ResponseEntity<SyncResult> syncOne(
