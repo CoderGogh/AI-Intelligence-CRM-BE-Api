@@ -18,7 +18,7 @@ import lombok.RequiredArgsConstructor;
 
 @Tag(name = "Admin - Manual Management", description = "관리자용 매뉴얼(채점 기준) 관리 API")
 @RestController
-@RequestMapping("/api/admin/manuals")
+@RequestMapping("/admin/manuals")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 public class ManualController {
