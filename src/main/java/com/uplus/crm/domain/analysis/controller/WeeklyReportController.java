@@ -4,6 +4,7 @@ import com.uplus.crm.common.exception.ErrorResponse;
 import com.uplus.crm.domain.analysis.dto.AgentRankingResponse;
 import com.uplus.crm.domain.analysis.dto.KeywordAnalysisResponse;
 import com.uplus.crm.domain.analysis.dto.PerformanceSummaryResponse;
+import com.uplus.crm.domain.analysis.dto.SubscriptionAnalysisResponse;
 import com.uplus.crm.domain.analysis.service.PerformanceReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,7 +25,7 @@ import java.time.LocalDate;
 
 @Tag(name = "report_snapshot", description = "일별/주별/월별 분석 리포트 조회 API (관리자 전용)")
 @RestController
-@RequestMapping("/analysis/weekly")
+@RequestMapping("/analysis/admin/weekly")
 @RequiredArgsConstructor
 public class WeeklyReportController {
 
@@ -45,7 +46,7 @@ public class WeeklyReportController {
             @ApiResponse(responseCode = "403", description = "권한 없음 (ADMIN 전용)",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @GetMapping("/performance-summary")
+    @GetMapping("/performance")
     public ResponseEntity<PerformanceSummaryResponse> getPerformanceSummary(
             @Parameter(description = "기준 날짜 (yyyy-MM-dd). 해당 날짜가 포함된 주간 스냅샷 조회. 미지정 시 최근 스냅샷",
                     example = "2026-01-15")
@@ -105,7 +106,7 @@ public class WeeklyReportController {
             @ApiResponse(responseCode = "403", description = "권한 없음 (ADMIN 전용)",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @GetMapping("/keyword-ranking")
+    @GetMapping("/keywords")
     public ResponseEntity<KeywordAnalysisResponse> getKeywordAnalysis(
             @Parameter(description = "기준 날짜 (yyyy-MM-dd). 해당 날짜가 포함된 주간 스냅샷 조회. 미지정 시 최근 스냅샷",
                     example = "2025-01-15")
@@ -116,6 +117,36 @@ public class WeeklyReportController {
         LocalDate targetDate = (date != null) ? date : LocalDate.now();
 
         return performanceReportService.getWeeklyKeywordAnalysis(targetDate)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.noContent().build());
+    }
+
+    @Operation(
+            summary = "주간 구독상품 선호도 분석",
+            description = "weekly_report_snapshot의 subscriptionAnalysis 섹션을 조회합니다. "
+                    + "신규 가입/해지 상위 상품, 연령대별 선호 상품을 제공합니다. "
+                    + "date 미지정 시 가장 최근 주간 스냅샷을 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "204", description = "해당 주간 스냅샷 없음 (배치 미실행 또는 데이터 없음)",
+                    content = @Content),
+            @ApiResponse(responseCode = "401", description = "인증 실패 (JWT 토큰 없음/만료)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "권한 없음 (ADMIN 전용)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/subscription")
+    public ResponseEntity<SubscriptionAnalysisResponse> getSubscription(
+            @Parameter(description = "기준 날짜 (yyyy-MM-dd). 해당 날짜가 포함된 주간 스냅샷 조회. 미지정 시 최근 스냅샷",
+                    example = "2025-01-15")
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate date) {
+
+        LocalDate targetDate = (date != null) ? date : LocalDate.now();
+
+        return performanceReportService.getWeeklySubscription(targetDate)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());
     }

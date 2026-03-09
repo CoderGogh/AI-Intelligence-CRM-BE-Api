@@ -106,7 +106,7 @@ public class AgentReportService {
                 .endDate(toDateString(doc, "endAt"))
                 .consultCount(getInt(doc, "consultCount"))
                 .avgDurationMinutes(getDouble(doc, "avgDurationMinutes"))
-                .customerSatisfaction(getDouble(doc, "customerSatisfaction"))
+                .customerSatisfaction(extractSatisfactionScore(doc))
                 .categoryRanking(toCategoryRankings(doc))
                 .qualityAnalysis(toQualityAnalysis(doc))
                 .build();
@@ -131,7 +131,19 @@ public class AgentReportService {
 
     private QualityAnalysis toQualityAnalysis(Document doc) {
         Document qa = doc.get("qualityAnalysis", Document.class);
-        if (qa == null) return null;
+        if (qa == null) {
+            return QualityAnalysis.builder()
+                    .empathyCount(0)
+                    .avgEmpathyPerConsult(0)
+                    .apologyRate(0)
+                    .closingRate(0)
+                    .courtesyRate(0)
+                    .promptnessRate(0)
+                    .accuracyRate(0)
+                    .waitingGuideRate(0)
+                    .totalScore(0)
+                    .build();
+        }
 
         return QualityAnalysis.builder()
                 .empathyCount(getLong(qa, "empathyCount"))
@@ -144,6 +156,17 @@ public class AgentReportService {
                 .waitingGuideRate(getDouble(qa, "waitingGuideRate"))
                 .totalScore(getDouble(qa, "totalScore"))
                 .build();
+    }
+
+    /**
+     * customerSatisfactionAnalysis.satisfactionScore 추출
+     */
+    private double extractSatisfactionScore(Document doc) {
+        Document csAnalysis = doc.get("customerSatisfactionAnalysis", Document.class);
+        if (csAnalysis != null) {
+            return getDouble(csAnalysis, "satisfactionScore");
+        }
+        return 0.0;
     }
 
     // ==================== Helper ====================
