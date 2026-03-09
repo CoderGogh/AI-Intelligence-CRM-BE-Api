@@ -17,6 +17,9 @@ import com.uplus.crm.domain.bookmark.dto.ConsultationBookmarkResponseDto;
 import com.uplus.crm.domain.bookmark.dto.ManualBookmarkResponseDto;
 import com.uplus.crm.domain.bookmark.service.BookmarkService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -31,6 +34,7 @@ import lombok.RequiredArgsConstructor;
  * - 상담요약(consultation result) 북마크 등록/해제/목록
  * - 우수사례(best_practice)는 아직 제외
  */
+@Tag(name = "Bookmark", description = "북마크 API")
 @RestController
 @RequestMapping("/bookmarks")
 @RequiredArgsConstructor
@@ -42,8 +46,13 @@ public class BookmarkController {
      * [운영정책 북마크 등록]
      * POST /bookmarks/manuals/{manualId}
      */
+    @Operation(
+        summary = "매뉴얼 북마크 추가",
+        description = "특정 운영정책 매뉴얼을 북마크에 추가합니다."
+    )
     @PostMapping("/manuals/{manualId}")
     public ApiResponse<BookmarkToggleResponseDto> addManualBookmark(
+            @Parameter(description = "북마크할 매뉴얼 ID", example = "1")
             @PathVariable("manualId") Integer manualId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
@@ -55,8 +64,13 @@ public class BookmarkController {
      * [운영정책 북마크 해제]
      * DELETE /bookmarks/manuals/{manualId}
      */
+    @Operation(
+        summary = "매뉴얼 북마크 삭제",
+        description = "특정 운영정책 매뉴얼 북마크를 해제합니다."
+    )
     @DeleteMapping("/manuals/{manualId}")
     public ApiResponse<BookmarkToggleResponseDto> removeManualBookmark(
+            @Parameter(description = "북마크 해제할 매뉴얼 ID", example = "1")
             @PathVariable("manualId") Integer manualId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
@@ -68,6 +82,10 @@ public class BookmarkController {
      * [내 운영정책 북마크 목록 조회]
      * GET /bookmarks/manuals
      */
+    @Operation(
+        summary = "매뉴얼 북마크 목록 조회",
+        description = "로그인한 사용자의 운영정책 매뉴얼 북마크 목록을 조회합니다."
+    )
     @GetMapping("/manuals")
     public ApiResponse<List<ManualBookmarkResponseDto>> getManualBookmarks(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -80,8 +98,13 @@ public class BookmarkController {
      * [상담요약 북마크 등록]
      * POST /bookmarks/consultations/{consultId}
      */
+    @Operation(
+        summary = "상담요약 북마크 추가",
+        description = "특정 상담요약 결과를 북마크에 추가합니다."
+    )
     @PostMapping("/consultations/{consultId}")
     public ApiResponse<BookmarkToggleResponseDto> addConsultationBookmark(
+            @Parameter(description = "북마크할 상담요약 ID", example = "1")
             @PathVariable("consultId") Long consultId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
@@ -93,8 +116,13 @@ public class BookmarkController {
      * [상담요약 북마크 해제]
      * DELETE /bookmarks/consultations/{consultId}
      */
+    @Operation(
+        summary = "상담요약 북마크 삭제",
+        description = "특정 상담요약 결과 북마크를 해제합니다."
+    )
     @DeleteMapping("/consultations/{consultId}")
     public ApiResponse<BookmarkToggleResponseDto> removeConsultationBookmark(
+            @Parameter(description = "북마크 해제할 상담요약 ID", example = "1")
             @PathVariable("consultId") Long consultId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
@@ -106,6 +134,10 @@ public class BookmarkController {
      * [내 상담요약 북마크 목록 조회]
      * GET /bookmarks/consultations
      */
+    @Operation(
+        summary = "상담요약 북마크 목록 조회",
+        description = "로그인한 사용자의 상담요약 북마크 목록을 조회합니다."
+    )
     @GetMapping("/consultations")
     public ApiResponse<List<ConsultationBookmarkResponseDto>> getConsultationBookmarks(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
