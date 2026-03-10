@@ -30,7 +30,7 @@ public abstract class BaseAgentSnapshot {
   private CustomerSatisfactionAnalysis customerSatisfactionAnalysis;
 
 
-  // --- 내부 객체 구조 (빨간 줄 방지용) ---
+  // --- 내부 객체 구조  ---
   @Getter
   public static class CategoryRanking {
     private String large;

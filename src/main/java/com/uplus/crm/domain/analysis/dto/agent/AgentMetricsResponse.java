@@ -1,13 +1,15 @@
 package com.uplus.crm.domain.analysis.dto.agent;
 
+import java.time.LocalDate;
 import lombok.Builder;
 import lombok.Getter;
 
 @Getter
 @Builder
 public class AgentMetricsResponse {
-  private String agentName;
   private String empId;
+  private LocalDate startedAt;
+  private LocalDate endedAt;
 
   // 내 지표
   private Integer myConsultCount;

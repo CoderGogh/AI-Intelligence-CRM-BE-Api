@@ -37,7 +37,6 @@ public class AgentReportService {
   private final WeeklyReportRepository weeklyTotalRepo;
   private final MonthlyReportRepository monthlyTotalRepo;
 
-  private final EmployeeRepository employeeRepository;
 
   // 1. 전체 성과 (Metrics) 조회
   public AgentMetricsResponse getMetrics(String period, Integer empId, LocalDate date) {
@@ -47,13 +46,11 @@ public class AgentReportService {
     BaseAgentSnapshot mySnap = getAgentSnapshot(period, empId, adjustedDate);
     BaseTotalSnapshot teamSnap = getTotalSnapshot(period, adjustedDate);
 
-    String empName = employeeRepository.findById(empId)
-        .map(Employee::getName)
-        .orElse("미등록상담사");
 
     return AgentMetricsResponse.builder()
-        .agentName(empName)
         .empId(empId.toString())
+        .startedAt(mySnap != null ? mySnap.getStartAt().toLocalDate() : adjustedDate.toLocalDate())
+        .endedAt(mySnap != null ? mySnap.getEndAt().toLocalDate() : null)
         .myConsultCount(mySnap != null ? mySnap.getConsultCount() : 0)
         .teamAvgConsultCount(teamSnap != null ? teamSnap.getAvgConsultCountPerAgent() : 0.0)
         .myAvgDuration(mySnap != null ? formatDuration(mySnap.getAvgDurationMinutes()) : "0:00")
@@ -74,7 +71,7 @@ public class AgentReportService {
 
     if (mySnap == null || mySnap.getCategoryRanking() == null) return Collections.emptyList();
 
-    return groupCategories(mySnap.getCategoryRanking());
+    return groupCategories(mySnap.getCategoryRanking(), empId.toString(), mySnap.getStartAt(), mySnap.getEndAt());
   }
 
   // 3. 고객 만족도 (Satisfaction) 조회
@@ -86,6 +83,9 @@ public class AgentReportService {
     var mySat = (mySnap != null) ? mySnap.getCustomerSatisfactionAnalysis() : null;
 
     return AgentSatisfactionResponse.builder()
+        .empId(empId.toString())
+        .startedAt(mySnap != null ? mySnap.getStartAt().toLocalDate() : adjustedDate.toLocalDate())
+        .endedAt(mySnap != null ? mySnap.getEndAt().toLocalDate() : null)
         .satisfactionScore(mySat != null ? mySat.getSatisfactionScore() : 0.0)
         .teamAvgSatisfactionScore(teamSnap != null ? teamSnap.getAvgSatisfiedScore() : 0.0)
         .responseRate(mySat != null ? mySat.getResponseRate() : 0.0)
@@ -94,7 +94,7 @@ public class AgentReportService {
 
   // --- Helper Methods ---
 
-  // [중요] 반환 타입을 BaseAgentSnapshot으로 하여 다형성 활용
+  // 반환 타입을 BaseAgentSnapshot으로
   private BaseAgentSnapshot getAgentSnapshot(String period, Integer empId, LocalDateTime startAt) {
 
     return switch (period.toLowerCase()) {
@@ -121,14 +121,18 @@ public class AgentReportService {
     return String.format("%d:%02d", m, s);
   }
 
-  // [중요] 파라미터 타입을 BaseAgentSnapshot 내부 클래스로 변경
-  private List<CategoryRankingDto> groupCategories(List<BaseAgentSnapshot.CategoryRanking> rankings) {
+  // 파라미터 타입을 BaseAgentSnapshot 내부 클래스로 변경
+  private List<CategoryRankingDto> groupCategories(List<BaseAgentSnapshot.CategoryRanking> rankings,
+      String empId, LocalDateTime start, LocalDateTime end) {
     if (rankings == null || rankings.isEmpty()) return Collections.emptyList();
 
     return rankings.stream()
         .collect(Collectors.groupingBy(BaseAgentSnapshot.CategoryRanking::getLarge))
         .entrySet().stream()
         .map(entry -> CategoryRankingDto.builder()
+            .empId(empId)
+            .startedAt(start.toLocalDate())
+            .endedAt(end != null ? end.toLocalDate() : null)
             .name(entry.getKey())
             .totalCount(entry.getValue().stream().mapToInt(BaseAgentSnapshot.CategoryRanking::getCount).sum())
             .mediumCategories(entry.getValue().stream()
