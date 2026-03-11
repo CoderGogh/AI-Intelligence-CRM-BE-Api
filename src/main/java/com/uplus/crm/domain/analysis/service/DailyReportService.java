@@ -2,13 +2,16 @@ package com.uplus.crm.domain.analysis.service;
 
 import com.uplus.crm.common.exception.BusinessException;
 import com.uplus.crm.common.exception.ErrorCode;
+import com.uplus.crm.domain.analysis.dto.AgentRankingResponse;
 import com.uplus.crm.domain.analysis.dto.CategorySummaryResponse;
 import com.uplus.crm.domain.analysis.dto.CustomerRiskCompareResponse;
 import com.uplus.crm.domain.analysis.dto.CustomerRiskCompareResponse.ChangeDetail;
 import com.uplus.crm.domain.analysis.dto.CustomerRiskCompareResponse.RiskSnapshot;
 import com.uplus.crm.domain.analysis.dto.CustomerRiskResponse;
 import com.uplus.crm.domain.analysis.dto.CustomerRiskResponse.SurgeAlert;
+import com.uplus.crm.domain.analysis.dto.KeywordAnalysisResponse;
 import com.uplus.crm.domain.analysis.dto.KeywordRankingResponse;
+import com.uplus.crm.domain.analysis.dto.PerformanceSummaryResponse;
 import com.uplus.crm.domain.analysis.dto.TimeSlotTrendResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,10 +24,12 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -32,7 +37,9 @@ import java.util.Optional;
 public class DailyReportService {
 
     private final MongoTemplate mongoTemplate;
+
     private static final String COLLECTION = "daily_report_snapshot";
+    private static final String AGENT_COLLECTION = "daily_agent_report_snapshot";
     private static final double SURGE_THRESHOLD = 50.0;
     private static final int SURGE_TYPE_MULTIPLIER = 2;
 
@@ -157,12 +164,269 @@ public class DailyReportService {
     }
 
     public Optional<KeywordRankingResponse> getKeywordRanking(LocalDate date, String slot) {
-        return Optional.ofNullable(findSnapshot(date.atStartOfDay()))
-                .map(doc -> KeywordRankingResponse.from(date, doc, slot));
+        if (slot != null) {
+            // 슬롯별 키워드: 성과 문서(startAt 기준)의 timeSlotTrend에서 조회
+            return Optional.ofNullable(findSnapshot(date.atStartOfDay()))
+                    .map(doc -> KeywordRankingResponse.from(date, doc, slot));
+        }
+        // 전체 키워드: KeywordRankTasklet이 저장한 키워드 문서(date 기준)에서 조회
+        Document keywordDoc = findKeywordSnapshot(date);
+        if (keywordDoc != null) {
+            return Optional.of(KeywordRankingResponse.fromDaily(date, keywordDoc));
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * 일별 고객 유형별 키워드 조회
+     *
+     * daily_report_snapshot(키워드 문서, date 기준)의 byGradeCode에서 조회합니다.
+     */
+    public Optional<KeywordAnalysisResponse> getDailyCustomerTypeKeywords(LocalDate date) {
+        Document keywordDoc = findKeywordSnapshot(date);
+        if (keywordDoc == null) return Optional.empty();
+
+        List<Document> gradeList = keywordDoc.getList("byGradeCode", Document.class);
+        if (gradeList == null || gradeList.isEmpty()) return Optional.empty();
+
+        List<KeywordAnalysisResponse.CustomerTypeKeyword> byCustomerType = gradeList.stream()
+                .map(g -> {
+                    List<Document> kwDocs = g.getList("keywords", Document.class);
+                    List<String> keywords = (kwDocs != null)
+                            ? kwDocs.stream()
+                                .map(kw -> kw.getString("keyword"))
+                                .collect(Collectors.toList())
+                            : List.of();
+                    return KeywordAnalysisResponse.CustomerTypeKeyword.builder()
+                            .customerType(g.getString("gradeCode"))
+                            .keywords(keywords)
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return Optional.of(KeywordAnalysisResponse.builder()
+                .startDate(date.toString())
+                .endDate(date.toString())
+                .byCustomerType(byCustomerType)
+                .build());
+    }
+
+    // ==================== 일별 상담사 성과/순위 ====================
+
+    /**
+     * 일별 전체 성과 요약
+     *
+     * daily_agent_report_snapshot에서 해당 날짜의 전체 상담사 데이터를 집계합니다.
+     */
+    public Optional<PerformanceSummaryResponse> getDailyPerformanceSummary(LocalDate date) {
+        List<Document> agentDocs = findAgentSnapshots(date);
+
+        if (agentDocs.isEmpty()) {
+            log.info("[DailyReport] {} 상담사 스냅샷 없음 (성과)", date);
+            return Optional.empty();
+        }
+
+        int totalConsultCount = agentDocs.stream()
+                .mapToInt(d -> getIntOrZero(d, "consultCount"))
+                .sum();
+
+        int agentCount = agentDocs.size();
+        double avgConsultCountPerAgent = agentCount > 0
+                ? Math.round((double) totalConsultCount / agentCount * 10.0) / 10.0
+                : 0;
+
+        double avgDurationMinutes = agentDocs.stream()
+                .mapToDouble(d -> getDoubleOrZero(d, "avgDurationMinutes"))
+                .average().orElse(0.0);
+        avgDurationMinutes = Math.round(avgDurationMinutes * 10.0) / 10.0;
+
+        double avgSatisfiedScore = agentDocs.stream()
+                .mapToDouble(this::extractSatisfactionScore)
+                .average().orElse(0.0);
+        avgSatisfiedScore = Math.round(avgSatisfiedScore * 10.0) / 10.0;
+
+        return Optional.of(PerformanceSummaryResponse.builder()
+                .startDate(date.toString())
+                .endDate(date.toString())
+                .totalConsultCount(totalConsultCount)
+                .avgConsultCountPerAgent(avgConsultCountPerAgent)
+                .avgDurationMinutes(avgDurationMinutes)
+                .avgSatisfiedScore(avgSatisfiedScore)
+                .build());
+    }
+
+    /**
+     * 일별 상담사 성과 순위 (TOP 10)
+     *
+     * daily_agent_report_snapshot에서 종합 점수 기반으로 정렬하여 상위 10명을 반환합니다.
+     * 종합 점수: 처리건수(25%) + 소요시간(15%) + 응대품질(30%) + 고객만족도(30%)
+     */
+    public Optional<AgentRankingResponse> getDailyAgentRanking(LocalDate date) {
+        List<Document> agentDocs = findAgentSnapshots(date);
+
+        if (agentDocs.isEmpty()) {
+            log.info("[DailyReport] {} 상담사 스냅샷 없음 (순위)", date);
+            return Optional.empty();
+        }
+
+        // 상담사 이름 조회용 맵 구축
+        Map<Long, String> agentNameMap = buildAgentNameMap(agentDocs);
+
+        // 중간 계산용 구조체
+        List<AgentScoreHolder> holders = agentDocs.stream()
+                .map(doc -> {
+                    long agentId = getLongOrZero(doc, "agentId");
+                    int consultCount = getIntOrZero(doc, "consultCount");
+                    double avgDuration = getDoubleOrZero(doc, "avgDurationMinutes");
+                    double satisfaction = extractSatisfactionScore(doc);
+                    double quality = extractQualityScore(doc);
+
+                    return new AgentScoreHolder(agentId, consultCount, avgDuration, satisfaction, quality);
+                })
+                .collect(Collectors.toList());
+
+        // min-max 정규화를 위한 통계값
+        if (holders.size() > 1) {
+            double maxConsult = holders.stream().mapToInt(h -> h.consultCount).max().orElse(1);
+            double minConsult = holders.stream().mapToInt(h -> h.consultCount).min().orElse(0);
+            double maxDuration = holders.stream().mapToDouble(h -> h.avgDuration).max().orElse(1);
+            double minDuration = holders.stream().mapToDouble(h -> h.avgDuration).min().orElse(0);
+
+            holders.forEach(h -> h.compositeScore = calculateCompositeScore(
+                    h.consultCount, h.avgDuration, h.quality, h.satisfaction,
+                    minConsult, maxConsult, minDuration, maxDuration));
+
+            holders.sort(Comparator.comparingDouble((AgentScoreHolder h) -> h.compositeScore).reversed());
+        } else if (holders.size() == 1) {
+            holders.get(0).compositeScore = 1.0;
+        }
+
+        int limit = Math.min(holders.size(), 10);
+        List<AgentRankingResponse.AgentPerformance> agents = new ArrayList<>();
+        for (int i = 0; i < limit; i++) {
+            AgentScoreHolder h = holders.get(i);
+            agents.add(AgentRankingResponse.AgentPerformance.builder()
+                    .rank(i + 1)
+                    .agentId(h.agentId)
+                    .agentName(agentNameMap.get(h.agentId))
+                    .consultCount(h.consultCount)
+                    .avgDurationMinutes(Math.round(h.avgDuration * 10.0) / 10.0)
+                    .avgSatisfiedScore(Math.round(h.satisfaction * 10.0) / 10.0)
+                    .qualityScore(Math.round(h.quality * 10.0) / 10.0)
+                    .build());
+        }
+
+        return Optional.of(AgentRankingResponse.builder()
+                .startDate(date.toString())
+                .endDate(date.toString())
+                .agents(agents)
+                .build());
+    }
+
+    private List<Document> findAgentSnapshots(LocalDate date) {
+        LocalDateTime startAt = date.atStartOfDay();
+        Query query = new Query(Criteria.where("startAt").is(startAt));
+        return mongoTemplate.find(query, Document.class, AGENT_COLLECTION);
+    }
+
+    private double extractSatisfactionScore(Document doc) {
+        Document csAnalysis = doc.get("customerSatisfactionAnalysis", Document.class);
+        if (csAnalysis != null) {
+            Object score = csAnalysis.get("satisfactionScore");
+            return score instanceof Number ? ((Number) score).doubleValue() : 0.0;
+        }
+        return 0.0;
+    }
+
+    private double extractQualityScore(Document doc) {
+        Document qa = doc.get("qualityAnalysis", Document.class);
+        if (qa != null) {
+            Object score = qa.get("totalScore");
+            return score instanceof Number ? ((Number) score).doubleValue() : 0.0;
+        }
+        return 0.0;
+    }
+
+    private Map<Long, String> buildAgentNameMap(List<Document> agentDocs) {
+        Map<Long, String> nameMap = new LinkedHashMap<>();
+        for (Document doc : agentDocs) {
+            long agentId = getLongOrZero(doc, "agentId");
+            if (agentId > 0 && !nameMap.containsKey(agentId)) {
+                String name = doc.getString("agentName");
+                if (name != null) {
+                    nameMap.put(agentId, name);
+                }
+            }
+        }
+        return nameMap;
+    }
+
+    /**
+     * 종합 순위 점수 계산 (0~1 스케일)
+     * 배치 PerformanceTasklet과 동일 로직
+     */
+    private double calculateCompositeScore(
+            int consultCount, double avgDuration, double quality, double satisfaction,
+            double minConsult, double maxConsult, double minDuration, double maxDuration) {
+
+        double consultNorm = (maxConsult == minConsult)
+                ? 1.0 : (consultCount - minConsult) / (maxConsult - minConsult);
+
+        double durationNorm = (maxDuration == minDuration)
+                ? 1.0 : 1.0 - (avgDuration - minDuration) / (maxDuration - minDuration);
+
+        double qualityNorm = quality / 5.0;
+        double satisfactionNorm = satisfaction / 5.0;
+
+        return consultNorm * 0.25 + durationNorm * 0.15 + qualityNorm * 0.30 + satisfactionNorm * 0.30;
+    }
+
+    /** 순위 계산용 임시 구조체 */
+    private static class AgentScoreHolder {
+        final long agentId;
+        final int consultCount;
+        final double avgDuration;
+        final double satisfaction;
+        final double quality;
+        double compositeScore;
+
+        AgentScoreHolder(long agentId, int consultCount, double avgDuration,
+                         double satisfaction, double quality) {
+            this.agentId = agentId;
+            this.consultCount = consultCount;
+            this.avgDuration = avgDuration;
+            this.satisfaction = satisfaction;
+            this.quality = quality;
+        }
+    }
+
+    // ==================== Helper (공통) ====================
+
+    private int getIntOrZero(Document doc, String field) {
+        Object val = doc.get(field);
+        return val instanceof Number ? ((Number) val).intValue() : 0;
+    }
+
+    private double getDoubleOrZero(Document doc, String field) {
+        Object val = doc.get(field);
+        return val instanceof Number ? ((Number) val).doubleValue() : 0.0;
+    }
+
+    private long getLongOrZero(Document doc, String field) {
+        Object val = doc.get(field);
+        return val instanceof Number ? ((Number) val).longValue() : 0L;
     }
 
     private Document findSnapshot(LocalDateTime startAt) {
         Query query = new Query(Criteria.where("startAt").is(startAt));
+        return mongoTemplate.findOne(query, Document.class, COLLECTION);
+    }
+
+    /**
+     * KeywordRankTasklet이 저장한 키워드 전용 문서 조회 (date 필드 기준)
+     */
+    private Document findKeywordSnapshot(LocalDate date) {
+        Query query = new Query(Criteria.where("date").is(date));
         return mongoTemplate.findOne(query, Document.class, COLLECTION);
     }
 
