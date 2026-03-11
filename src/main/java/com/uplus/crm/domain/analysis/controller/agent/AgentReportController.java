@@ -46,11 +46,11 @@ public class AgentReportController {
           "date 미지정 시 전일(어제) 기준으로 조회합니다."
   )
   @ApiResponses({
+      @ApiResponse(responseCode = "400", description = "상담사 ID 누락 (관리자 조회 시 필수)",
+          content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
       @ApiResponse(responseCode = "401", description = "인증 실패 (JWT 토큰 없음/만료)",
           content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-      @ApiResponse(responseCode = "404", description = "요청한 날짜에 해당하는 리포트 데이터가 없음",
-          content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-      @ApiResponse(responseCode = "500", description = "서버 오류",
+      @ApiResponse(responseCode = "404", description = "존재하지 않는 상담사 또는 리포트 데이터 없음",
           content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
   })
   @GetMapping("/{period}/metrics")
@@ -63,10 +63,15 @@ public class AgentReportController {
       @AuthenticationPrincipal CustomUserDetails userDetails) { // 로그인 정보에서 empId 추출
 
     // 1. 최종 조회할 empId 결정
-//     관리자이면서 targetEmpId가 들어온 경우에만 해당 ID를 사용, 그 외엔 본인 ID
-    Integer finalEmpId = (userDetails.isAdmin() && targetEmpId != null)
-        ? targetEmpId
-        : userDetails.getEmpId();
+    Integer finalEmpId;
+    if (userDetails.isAdmin()) {
+      if (targetEmpId == null) {
+        throw new BusinessException(ErrorCode.MISSING_TARGET_EMPID); // 400 에러
+      }
+      finalEmpId = targetEmpId;
+    } else {
+      finalEmpId = userDetails.getEmpId();
+    }
 
 
     LocalDate targetDate = (date != null) ? date : LocalDate.now().minusDays(1);
@@ -84,11 +89,11 @@ public class AgentReportController {
           "date 미지정 시 전일(어제) 기준으로 조회합니다."
   )
   @ApiResponses({
+      @ApiResponse(responseCode = "400", description = "상담사 ID 누락 (관리자 조회 시 필수)",
+          content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
       @ApiResponse(responseCode = "401", description = "인증 실패 (JWT 토큰 없음/만료)",
           content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-      @ApiResponse(responseCode = "404", description = "요청한 날짜에 해당하는 리포트 데이터가 없음",
-          content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-      @ApiResponse(responseCode = "500", description = "서버 오류",
+      @ApiResponse(responseCode = "404", description = "존재하지 않는 상담사 또는 리포트 데이터 없음",
           content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
   })
   @GetMapping("/{period}/categories")
@@ -102,9 +107,15 @@ public class AgentReportController {
 
     // 1. 최종 조회할 empId 결정
     // 관리자이면서 targetEmpId가 들어온 경우에만 해당 ID를 사용, 그 외엔 본인 ID
-    Integer finalEmpId = (userDetails.isAdmin() && targetEmpId != null)
-        ? targetEmpId
-        : userDetails.getEmpId();
+    Integer finalEmpId;
+    if (userDetails.isAdmin()) {
+      if (targetEmpId == null) {
+        throw new BusinessException(ErrorCode.MISSING_TARGET_EMPID); // 400 에러
+      }
+      finalEmpId = targetEmpId;
+    } else {
+      finalEmpId = userDetails.getEmpId();
+    }
 
 
     LocalDate targetDate = (date != null) ? date : LocalDate.now().minusDays(1);
@@ -122,11 +133,11 @@ public class AgentReportController {
           "date 미지정 시 전일(어제) 기준으로 조회합니다."
   )
   @ApiResponses({
+      @ApiResponse(responseCode = "400", description = "상담사 ID 누락 (관리자 조회 시 필수)",
+          content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
       @ApiResponse(responseCode = "401", description = "인증 실패 (JWT 토큰 없음/만료)",
           content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-      @ApiResponse(responseCode = "404", description = "요청한 날짜에 해당하는 리포트 데이터가 없음",
-          content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-      @ApiResponse(responseCode = "500", description = "서버 오류",
+      @ApiResponse(responseCode = "404", description = "존재하지 않는 상담사 또는 리포트 데이터 없음",
           content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
   })
   @GetMapping("/{period}/satisfaction")
@@ -139,13 +150,18 @@ public class AgentReportController {
       @AuthenticationPrincipal CustomUserDetails userDetails) {
 
     // 1. 최종 조회할 empId 결정
-    // 관리자이면서 targetEmpId가 들어온 경우에만 해당 ID를 사용, 그 외엔 본인 ID
-    Integer finalEmpId = (userDetails.isAdmin() && targetEmpId != null)
-        ? targetEmpId
-        : userDetails.getEmpId();
+    Integer finalEmpId;
+    if (userDetails.isAdmin()) {
+      if (targetEmpId == null) {
+        throw new BusinessException(ErrorCode.MISSING_TARGET_EMPID); // 400 에러
+      }
+      finalEmpId = targetEmpId;
+    } else {
+      finalEmpId = userDetails.getEmpId();
+    }
 
     LocalDate targetDate = (date != null) ? date : LocalDate.now().minusDays(1);
 
-    return ResponseEntity.ok(agentReportService.getSatisfaction(period, targetEmpId, targetDate));
+    return ResponseEntity.ok(agentReportService.getSatisfaction(period, finalEmpId, targetDate));
   }
 }

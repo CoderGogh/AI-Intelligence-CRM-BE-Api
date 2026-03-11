@@ -1,6 +1,7 @@
 package com.uplus.crm.domain.analysis.service.agent;
 
-import com.uplus.crm.domain.account.entity.Employee;
+import com.uplus.crm.common.exception.BusinessException;
+import com.uplus.crm.common.exception.ErrorCode;
 import com.uplus.crm.domain.account.repository.mysql.EmployeeRepository;
 import com.uplus.crm.domain.analysis.dto.agent.AgentMetricsResponse;
 import com.uplus.crm.domain.analysis.dto.agent.AgentSatisfactionResponse;
@@ -37,14 +38,25 @@ public class AgentReportService {
   private final WeeklyReportRepository weeklyTotalRepo;
   private final MonthlyReportRepository monthlyTotalRepo;
 
+  private final EmployeeRepository employeeRepository;
+
 
   // 1. 전체 성과 (Metrics) 조회
   public AgentMetricsResponse getMetrics(String period, Integer empId, LocalDate date) {
+    //  1. 상담사 존재 여부 체크 (MySQL 조회)
+    if (!employeeRepository.existsById(empId)) {
+      throw new BusinessException(ErrorCode.AGENT_NOT_FOUND);
+    }
     LocalDateTime adjustedDate = getAdjustedDate(period, date.atStartOfDay());
 
     // 보정된 날짜를 두 메서드에 똑같이 넘겨줍니다.
     BaseAgentSnapshot mySnap = getAgentSnapshot(period, empId, adjustedDate);
     BaseTotalSnapshot teamSnap = getTotalSnapshot(period, adjustedDate);
+
+    // 2. 스냅샷 데이터 존재 여부 체크 (MongoDB 조회)
+    if (mySnap == null) {
+      throw new BusinessException(ErrorCode.REPORT_DATA_NOT_FOUND);
+    }
 
 
     return AgentMetricsResponse.builder()
@@ -66,21 +78,40 @@ public class AgentReportService {
   // 2. 처리 카테고리 (Categories) 조회
   public List<CategoryRankingDto> getCategories(String period, Integer empId, LocalDate date) {
 
+    //  1. 상담사 존재 여부 체크 (MySQL 조회)
+    if (!employeeRepository.existsById(empId)) {
+      throw new BusinessException(ErrorCode.AGENT_NOT_FOUND);
+    }
+
     LocalDateTime adjustedDate = getAdjustedDate(period, date.atStartOfDay());
     BaseAgentSnapshot mySnap = getAgentSnapshot(period, empId, adjustedDate);
 
-    if (mySnap == null || mySnap.getCategoryRanking() == null) return Collections.emptyList();
+//    if (mySnap == null || mySnap.getCategoryRanking() == null) return Collections.emptyList();
+    // 2. 스냅샷 데이터 존재 여부 체크 (MongoDB 조회)
+    if (mySnap == null) {
+      throw new BusinessException(ErrorCode.REPORT_DATA_NOT_FOUND);
+    }
 
     return groupCategories(mySnap.getCategoryRanking(), empId.toString(), mySnap.getStartAt(), mySnap.getEndAt());
   }
 
   // 3. 고객 만족도 (Satisfaction) 조회
   public AgentSatisfactionResponse getSatisfaction(String period, Integer empId, LocalDate date) {
+
+    //  1. 상담사 존재 여부 체크 (MySQL 조회)
+    if (!employeeRepository.existsById(empId)) {
+      throw new BusinessException(ErrorCode.AGENT_NOT_FOUND);
+    }
+
     LocalDateTime adjustedDate = getAdjustedDate(period, date.atStartOfDay());
     BaseAgentSnapshot mySnap = getAgentSnapshot(period, empId, adjustedDate);
     BaseTotalSnapshot teamSnap = getTotalSnapshot(period, adjustedDate);
 
     var mySat = (mySnap != null) ? mySnap.getCustomerSatisfactionAnalysis() : null;
+    // 2. 스냅샷 데이터 존재 여부 체크 (MongoDB 조회)
+    if (mySnap == null) {
+      throw new BusinessException(ErrorCode.REPORT_DATA_NOT_FOUND);
+    }
 
     return AgentSatisfactionResponse.builder()
         .empId(empId.toString())
