@@ -2,11 +2,11 @@ package com.uplus.crm.domain.bookmark.service;
 
 import java.util.List;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
+import com.uplus.crm.common.exception.BookmarkErrorCode;
+import com.uplus.crm.common.exception.BookmarkException;
 import com.uplus.crm.domain.account.repository.mysql.UserBookmarkRepository;
 import com.uplus.crm.domain.bookmark.dto.BookmarkToggleResponseDto;
 import com.uplus.crm.domain.bookmark.dto.ConsultationBookmarkResponseDto;
@@ -28,7 +28,7 @@ public class BookmarkServiceImpl implements BookmarkService {
     @Transactional
     public BookmarkToggleResponseDto addManualBookmark(Integer empId, Integer manualId) {
         if (userBookmarkRepository.existsByEmpIdAndManualId(empId, manualId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 등록된 운영정책 북마크입니다.");
+            throw new BookmarkException(BookmarkErrorCode.MANUAL_BOOKMARK_ALREADY_EXISTS);
         }
 
         UserBookmark bookmark = UserBookmark.builder()
@@ -52,7 +52,7 @@ public class BookmarkServiceImpl implements BookmarkService {
     @Transactional
     public BookmarkToggleResponseDto removeManualBookmark(Integer empId, Integer manualId) {
         UserBookmark bookmark = userBookmarkRepository.findByEmpIdAndManualId(empId, manualId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "운영정책 북마크가 존재하지 않습니다."));
+                .orElseThrow(() -> new BookmarkException(BookmarkErrorCode.MANUAL_BOOKMARK_NOT_FOUND));
 
         userBookmarkRepository.delete(bookmark);
 
@@ -80,11 +80,11 @@ public class BookmarkServiceImpl implements BookmarkService {
     @Transactional
     public BookmarkToggleResponseDto addConsultationBookmark(Integer empId, Long consultId) {
         if (!consultationResultRepository.existsById(consultId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "상담요약 데이터가 존재하지 않습니다.");
+            throw new BookmarkException(BookmarkErrorCode.CONSULTATION_NOT_FOUND);
         }
 
         if (userBookmarkRepository.existsByEmpIdAndConsultId(empId, consultId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 등록된 상담요약 북마크입니다.");
+            throw new BookmarkException(BookmarkErrorCode.CONSULTATION_BOOKMARK_ALREADY_EXISTS);
         }
 
         UserBookmark bookmark = UserBookmark.builder()
@@ -108,7 +108,7 @@ public class BookmarkServiceImpl implements BookmarkService {
     @Transactional
     public BookmarkToggleResponseDto removeConsultationBookmark(Integer empId, Long consultId) {
         UserBookmark bookmark = userBookmarkRepository.findByEmpIdAndConsultId(empId, consultId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "상담요약 북마크가 존재하지 않습니다."));
+                .orElseThrow(() -> new BookmarkException(BookmarkErrorCode.CONSULTATION_BOOKMARK_NOT_FOUND));
 
         userBookmarkRepository.delete(bookmark);
 
