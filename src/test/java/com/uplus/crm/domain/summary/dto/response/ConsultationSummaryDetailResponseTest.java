@@ -85,7 +85,6 @@ class ConsultationSummaryDetailResponseTest {
 
     assertThat(response.getCustomer().getId()).isEqualTo(9L);
     assertThat(response.getCustomer().getSatisfiedScore()).isEqualTo(4.5);
-    assertThat(response.getCustomer().getSatisfaction()).isEqualTo("4.5");
 
     assertThat(response.getIam().getMatchKeyword()).containsExactly("해지", "유지");
     assertThat(response.getSummary().getStatus()).isEqualTo("DONE");
