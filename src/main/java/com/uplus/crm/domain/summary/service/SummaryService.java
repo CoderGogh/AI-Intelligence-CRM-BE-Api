@@ -18,11 +18,6 @@ public class SummaryService {
   private final SummaryRepository summaryRepository;
   private final SummaryConsultationResultRepository consultationResultRepository;
 
-  public Page<ConsultationSummaryListResponse> getList(Pageable pageable) {
-    return summaryRepository.findAll(pageable)
-        .map(ConsultationSummaryListResponse::from);
-  }
-
   public ConsultationSummaryDetailResponse getDetail(Long id) {
     if (!consultationResultRepository.existsById(id)) {
       throw new BusinessException(ErrorCode.CONSULTATION_RESULT_NOT_FOUND);
