@@ -4,7 +4,6 @@ import com.uplus.crm.common.exception.BusinessException;
 import com.uplus.crm.common.exception.ErrorCode;
 import com.uplus.crm.domain.summary.document.ConsultationSummary;
 import com.uplus.crm.domain.summary.dto.response.ConsultationSummaryDetailResponse;
-import com.uplus.crm.domain.summary.dto.response.ConsultationSummaryListResponse;
 import com.uplus.crm.domain.summary.repository.SummaryConsultationResultRepository;
 import com.uplus.crm.domain.summary.repository.SummaryRepository;
 import lombok.RequiredArgsConstructor;

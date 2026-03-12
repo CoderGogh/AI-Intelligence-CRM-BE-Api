@@ -1,6 +1,7 @@
 package com.uplus.crm.domain.summary.dto.response;
 
 import com.uplus.crm.domain.summary.document.ConsultationSummary;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -13,12 +14,10 @@ import lombok.Getter;
 @Builder
 public class ConsultationSummaryDto {
 
-  private static final ZoneId SEOUL_ZONE = ZoneId.of("Asia/Seoul");
-  private static final DateTimeFormatter DATE_TIME_FORMATTER =
-      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+  private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
 
   private Long consultId;
-  private String consultedAt;
+  private LocalDateTime consultedAt;
   private String channel;
   private String customerName;
   private String phone;
@@ -42,13 +41,7 @@ public class ConsultationSummaryDto {
   public static ConsultationSummaryDto from(ConsultationSummary summary) {
     return ConsultationSummaryDto.builder()
         .consultId(summary.getConsultId())
-        .consultedAt(summary.getConsultedAt() == null
-            ? null
-            : summary.getConsultedAt()
-                .atOffset(ZoneOffset.UTC)
-                .atZoneSameInstant(SEOUL_ZONE)
-                .toLocalDateTime()
-                .format(DATE_TIME_FORMATTER))
+        .consultedAt(convertUtcToKst(summary.getConsultedAt()))
         .channel(summary.getChannel())
         .customerName(summary.getCustomer() != null ? summary.getCustomer().getName() : null)
         .phone(summary.getCustomer() != null ? summary.getCustomer().getPhone() : null)
@@ -73,5 +66,15 @@ public class ConsultationSummaryDto {
                     .build())
                 .toList())
         .build();
+  }
+
+  private static LocalDateTime convertUtcToKst(LocalDateTime utcDateTime) {
+    if (utcDateTime == null) {
+      return null;
+    }
+
+    return utcDateTime.atZone(ZoneOffset.UTC)
+        .withZoneSameInstant(KST_ZONE)
+        .toLocalDateTime();
   }
 }

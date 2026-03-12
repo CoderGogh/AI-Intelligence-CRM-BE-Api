@@ -2,8 +2,6 @@ package com.uplus.crm.domain.summary.controller;
 
 import com.uplus.crm.common.exception.ErrorResponse;
 import com.uplus.crm.domain.summary.dto.request.FilterGroupCreateRequest;
-import com.uplus.crm.domain.summary.dto.request.SummarySearchRequest;
-import com.uplus.crm.domain.summary.dto.response.ConsultationSummaryListResponse;
 import com.uplus.crm.domain.summary.dto.response.FilterGroupDetailResponse;
 import com.uplus.crm.domain.summary.dto.response.FilterGroupListResponse;
 import com.uplus.crm.domain.summary.dto.request.FilterGroupOrderRequest;

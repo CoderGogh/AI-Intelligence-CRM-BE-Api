@@ -2,6 +2,8 @@ package com.uplus.crm.domain.summary.dto.response;
 
 import com.uplus.crm.domain.summary.document.ConsultationSummary;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
@@ -10,6 +12,9 @@ import lombok.Getter;
 @Builder
 public class ConsultationSummaryDetailResponse {
 
+  private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
+
+  private String id;
   private Long consultId;
   private LocalDateTime consultedAt;
   private LocalDateTime createdAt;
@@ -20,11 +25,15 @@ public class ConsultationSummaryDetailResponse {
   private AgentInfo agent;
   private CustomerInfo customer;
   private IamInfo iam;
+  private SummaryInfo summary;
+  private List<RiskFlagInfo> riskFlags;
   private CancellationInfo cancellation;
+  private List<ProductInfo> resultProducts;
   private List<ProductInfo> products;
 
   @Getter @Builder
   public static class CategoryInfo {
+    private String code;
     private String large;
     private String medium;
     private String small;
@@ -38,12 +47,13 @@ public class ConsultationSummaryDetailResponse {
 
   @Getter @Builder
   public static class CustomerInfo {
+    private Long id;
     private String grade;
     private String name;
     private String phone;
     private String type;
     private String ageGroup;
-    private String satisfaction;
+    private Double satisfiedScore;
   }
 
   @Getter @Builder
@@ -51,7 +61,21 @@ public class ConsultationSummaryDetailResponse {
     private String memo;
     private String action;
     private String issue;
+    private List<String> matchKeyword;
     private Double matchRate;
+  }
+
+  @Getter @Builder
+  public static class SummaryInfo {
+    private String status;
+    private String content;
+    private List<String> keywords;
+  }
+
+  @Getter @Builder
+  public static class RiskFlagInfo {
+    private String riskType;
+    private String riskLevel;
   }
 
   @Getter @Builder
@@ -75,22 +99,17 @@ public class ConsultationSummaryDetailResponse {
   public static ConsultationSummaryDetailResponse from(
       ConsultationSummary e) {
 
-    String satisfaction = null;
-
-    if (e.getCustomer() != null) {
-      Double score = e.getCustomer().getSatisfiedScore();
-      satisfaction = score == null ? "미작성" : score + "";
-    }
-
     return ConsultationSummaryDetailResponse.builder()
+        .id(e.getId())
         .consultId(e.getConsultId())
-        .consultedAt(e.getConsultedAt())
-        .createdAt(e.getCreatedAt())
+        .consultedAt(convertUtcToKst(e.getConsultedAt()))
+        .createdAt(convertUtcToKst(e.getCreatedAt()))
         .durationSec(e.getDurationSec())
         .channel(e.getChannel())
 
         .category(e.getCategory() == null ? null :
             CategoryInfo.builder()
+                .code(e.getCategory().getCode())
                 .large(e.getCategory().getLarge())
                 .medium(e.getCategory().getMedium())
                 .small(e.getCategory().getSmall())
@@ -104,12 +123,13 @@ public class ConsultationSummaryDetailResponse {
 
         .customer(e.getCustomer() == null ? null :
             CustomerInfo.builder()
+                .id(e.getCustomer().get_id())
                 .grade(e.getCustomer().getGrade())
                 .name(e.getCustomer().getName())
                 .phone(e.getCustomer().getPhone())
                 .type(e.getCustomer().getType())
                 .ageGroup(e.getCustomer().getAgeGroup())
-                .satisfaction(satisfaction)
+                .satisfiedScore(e.getCustomer().getSatisfiedScore())
                 .build())
 
         .iam(e.getIam() == null ? null :
@@ -117,8 +137,24 @@ public class ConsultationSummaryDetailResponse {
                 .memo(e.getIam().getMemo())
                 .action(e.getIam().getAction())
                 .issue(e.getIam().getIssue())
+                .matchKeyword(e.getIam().getMatchKeyword())
                 .matchRate(e.getIam().getMatchRates())
                 .build())
+
+        .summary(e.getSummary() == null ? null :
+            SummaryInfo.builder()
+                .status(e.getSummary().getStatus())
+                .content(e.getSummary().getContent())
+                .keywords(e.getSummary().getKeywords())
+                .build())
+
+        .riskFlags(e.getRiskFlags() == null ? null :
+            e.getRiskFlags().stream()
+                .map(flag -> RiskFlagInfo.builder()
+                    .riskType(flag.getRiskType())
+                    .riskLevel(flag.getRiskLevel())
+                    .build())
+                .toList())
 
         .cancellation(e.getCancellation() == null ? null :
             CancellationInfo.builder()
@@ -129,17 +165,35 @@ public class ConsultationSummaryDetailResponse {
                 .complaintReasons(e.getCancellation().getComplaintReasons())
                 .build())
 
-        .products(e.getResultProducts() == null ? null :
-            e.getResultProducts().stream()
-                .map(p -> ProductInfo.builder()
-                    .subscribed(p.getSubscribed())
-                    .canceled(p.getCanceled())
-                    .conversion(p.getConversion())
-                    .recommitment(p.getRecommitment())
-                    .changeType(p.getChangeType())
-                    .build())
-                .toList())
+        .resultProducts(buildProductInfo(e))
+        .products(buildProductInfo(e))
 
         .build();
+  }
+
+  private static List<ProductInfo> buildProductInfo(ConsultationSummary summary) {
+    if (summary.getResultProducts() == null) {
+      return null;
+    }
+
+    return summary.getResultProducts().stream()
+        .map(p -> ProductInfo.builder()
+            .subscribed(p.getSubscribed())
+            .canceled(p.getCanceled())
+            .conversion(p.getConversion())
+            .recommitment(p.getRecommitment())
+            .changeType(p.getChangeType())
+            .build())
+        .toList();
+  }
+
+  private static LocalDateTime convertUtcToKst(LocalDateTime utcDateTime) {
+    if (utcDateTime == null) {
+      return null;
+    }
+
+    return utcDateTime.atZone(ZoneOffset.UTC)
+        .withZoneSameInstant(KST_ZONE)
+        .toLocalDateTime();
   }
 }
