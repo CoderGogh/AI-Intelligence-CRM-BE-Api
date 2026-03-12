@@ -14,7 +14,10 @@ import com.uplus.crm.domain.bookmark.dto.ConsultationBookmarkResponseDto;
 import com.uplus.crm.domain.bookmark.dto.ManualBookmarkDetailResponseDto;
 import com.uplus.crm.domain.bookmark.dto.ManualBookmarkResponseDto;
 import com.uplus.crm.domain.bookmark.entity.UserBookmark;
+import com.uplus.crm.domain.consultation.entity.ConsultationResult;
 import com.uplus.crm.domain.consultation.repository.ConsultationResultRepository;
+import com.uplus.crm.domain.manual.entity.Manual;
+import com.uplus.crm.domain.manual.repository.ManualRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,6 +28,7 @@ public class BookmarkServiceImpl implements BookmarkService {
 
     private final UserBookmarkRepository userBookmarkRepository;
     private final ConsultationResultRepository consultationResultRepository;
+    private final ManualRepository manualRepository; //
 
     @Override
     @Transactional
@@ -134,15 +138,50 @@ public class BookmarkServiceImpl implements BookmarkService {
                 .toList();
     }
 
-	@Override
-	public ManualBookmarkDetailResponseDto getManualBookmarkDetail(Integer empId, Integer manualId) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+    @Override
+    public ManualBookmarkDetailResponseDto getManualBookmarkDetail(Integer empId, Integer manualId) {
+        // 1. 해당 사용자가 실제로 이 매뉴얼을 북마크했는지 확인
+        UserBookmark bookmark = userBookmarkRepository.findByEmpIdAndManualId(empId, manualId)
+                .orElseThrow(() -> new BookmarkException(BookmarkErrorCode.MANUAL_BOOKMARK_NOT_FOUND));
 
-	@Override
-	public ConsultationBookmarkDetailResponseDto getConsultationBookmarkDetail(Integer empId, Long consultId) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+        // 2. 실제 매뉴얼 상세 정보 가져오기
+        Manual manual = manualRepository.findById(manualId)
+                .orElseThrow(() -> new BookmarkException(BookmarkErrorCode.MANUAL_BOOKMARK_NOT_FOUND));
+
+        // 3. DTO로 변환해서 리턴
+        return ManualBookmarkDetailResponseDto.builder()
+                .bookmarkId(bookmark.getBookmarkId())
+                .manualId(manual.getManualId())
+                .title(manual.getTitle())
+                .content(manual.getContent())
+                .isActive(manual.getIsActive())
+                // ... 나머지 필드들도 manual 객체에서 꺼내서 채워주세요
+                .bookmarkedAt(bookmark.getCreatedAt())
+                .build();
+    }
+
+    @Override
+    public ConsultationBookmarkDetailResponseDto getConsultationBookmarkDetail(Integer empId, Long consultId) {
+        // 1. 해당 사용자가 이 상담 결과를 북마크했는지 확인
+        UserBookmark bookmark = userBookmarkRepository.findByEmpIdAndConsultId(empId, consultId)
+                .orElseThrow(() -> new BookmarkException(BookmarkErrorCode.CONSULTATION_BOOKMARK_NOT_FOUND));
+
+        // 2. 실제 상담 상세 정보 가져오기
+        ConsultationResult consultation = consultationResultRepository.findById(consultId)
+                .orElseThrow(() -> new BookmarkException(BookmarkErrorCode.CONSULTATION_NOT_FOUND));
+
+        // 3. DTO에 담아서 반환 (엔티티의 iam 필드들을 조합)
+        return ConsultationBookmarkDetailResponseDto.builder()
+                .bookmarkId(bookmark.getBookmarkId())
+                .consultId(consultation.getConsultId())
+                // iamIssue를 summary(요약)로 사용
+                .summary(consultation.getIamIssue()) 
+                // iamAction과 iamMemo를 합쳐서 전체 결과로 보여줌
+                .result(String.format("Action: %s / Memo: %s", 
+                        consultation.getIamAction(), 
+                        consultation.getIamMemo())) 
+                .consultationCreatedAt(consultation.getCreatedAt())
+                .bookmarkedAt(bookmark.getCreatedAt())
+                .build();
+    }
 }
