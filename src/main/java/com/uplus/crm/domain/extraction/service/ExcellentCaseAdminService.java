@@ -21,16 +21,16 @@ public class ExcellentCaseAdminService {
     @Transactional(readOnly = true)
     public Page<EvaluationListResponse> getCandidatePage(ExcellentCaseSearchRequest request, int page, int size) {
         
-        // 1. 상태값(status) 처리: 입력 없거나 "string"이면 null 전달 
+        // 1. 상태값(status) 처리: "ALL"이거나 값이 없으면 null (전체조회)
         String status = request.status();
         if (status == null || status.isBlank() || "string".equalsIgnoreCase(status) || "ALL".equalsIgnoreCase(status)) {
             status = null;
         }
 
-        // 2. 정렬 기준(sortBy) 처리: 입력 없거나 "string"이면 기본값 "score"
+        // 2. 정렬 기준(sortBy) 처리: ★ 기본값을 createdAt으로 변경 ★
         String sortBy = request.sortBy();
         if (sortBy == null || sortBy.isBlank() || "string".equalsIgnoreCase(sortBy)) {
-            sortBy = "score";
+            sortBy = "createdAt"; // 첫 진입 시 최신순
         }
 
         // 3. 정렬 방향(direction) 처리: 기본값 DESC
@@ -41,13 +41,13 @@ public class ExcellentCaseAdminService {
             try {
                 direction = Sort.Direction.fromString(dirInput);
             } catch (IllegalArgumentException e) {
-                // "abc" 같이 엉뚱한 값이 들어오면 기본값 DESC 유지
                 direction = Sort.Direction.DESC;
             }
         }
 
-        // 4. 최종 Pageable 조립 및 호출
+        // 4. 최종 Pageable 조립 (예: sortBy가 "score"로 들어오면 점수 정렬 작동)
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        
         return evaluationRepository.findCandidatePage(status, pageable);
     }
 }
