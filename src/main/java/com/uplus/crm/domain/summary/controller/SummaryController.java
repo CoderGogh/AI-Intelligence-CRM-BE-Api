@@ -41,7 +41,6 @@ public class SummaryController {
   @GetMapping("/{consultId}")
   public ConsultationSummaryDetailResponse detail(
       @PathVariable Long consultId) {
-
     return service.getDetail(consultId);
   }
 }
