@@ -21,7 +21,7 @@ import lombok.RequiredArgsConstructor;
 
 @Tag(name = "Weekly Excellent Case - Board", description = "상담사용 주간 우수 사례 게시판 API")
 @RestController
-@RequestMapping("/api/excellent-cases")
+@RequestMapping("/excellent-cases")
 @RequiredArgsConstructor
 public class WeeklyExcellentCaseController {
 

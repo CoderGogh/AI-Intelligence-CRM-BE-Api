@@ -19,7 +19,7 @@ import lombok.RequiredArgsConstructor;
 
 @Tag(name = "Admin - Excellent Case", description = "관리자용 우수 사례 후보군 관리 API")
 @RestController
-@RequestMapping("/api/admin/excellent-cases") 
+@RequestMapping("/admin/excellent-cases") 
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')") 
 public class ExcellentCaseAdminController {
