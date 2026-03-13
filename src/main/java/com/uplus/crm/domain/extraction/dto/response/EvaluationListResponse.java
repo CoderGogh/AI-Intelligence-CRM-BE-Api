@@ -1,4 +1,4 @@
-package com.uplus.crm.domain.extraction.dto;
+package com.uplus.crm.domain.extraction.dto.response;
 
 import com.uplus.crm.domain.extraction.entity.SelectionStatus;
 import java.time.LocalDateTime;

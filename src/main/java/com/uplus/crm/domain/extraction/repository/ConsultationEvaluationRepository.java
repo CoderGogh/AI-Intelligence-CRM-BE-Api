@@ -1,6 +1,6 @@
 package com.uplus.crm.domain.extraction.repository;
 
-import com.uplus.crm.domain.extraction.dto.EvaluationListResponse;
+import com.uplus.crm.domain.extraction.dto.response.EvaluationListResponse;
 import com.uplus.crm.domain.extraction.entity.ConsultationEvaluation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Repository;
 public interface ConsultationEvaluationRepository extends JpaRepository<ConsultationEvaluation, Long> {
 
     @Query("""
-        SELECT new com.uplus.crm.domain.extraction.dto.EvaluationListResponse(
+        SELECT new com.uplus.crm.domain.extraction.dto.response.EvaluationListResponse(
             e.consultId, 
             p.smallCategory, 
             emp.name, 
@@ -27,7 +27,6 @@ public interface ConsultationEvaluationRepository extends JpaRepository<Consulta
         JOIN Employee emp ON r.empId = emp.empId
         JOIN ConsultationCategoryPolicy p ON r.categoryCode = p.categoryCode
         JOIN RetentionAnalysis a ON e.consultId = a.consultId
-        WHERE e.isCandidate = true
         AND (:status IS NULL OR CAST(e.selectionStatus AS string) = :status)
     """)
     Page<EvaluationListResponse> findCandidatePage(@Param("status") String status, Pageable pageable);
