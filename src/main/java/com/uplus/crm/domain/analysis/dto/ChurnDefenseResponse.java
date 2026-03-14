@@ -1,5 +1,6 @@
 package com.uplus.crm.domain.analysis.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ChurnDefenseResponse {
 
     @Schema(description = "집계 시작일", example = "2025-01-01")
@@ -30,16 +32,16 @@ public class ChurnDefenseResponse {
     private String endDate;
 
     @Schema(description = "해지방어 시도 건수", example = "85")
-    private int totalAttempts;
+    private Integer totalAttempts;
 
     @Schema(description = "방어 성공 건수", example = "52")
-    private int successCount;
+    private Integer successCount;
 
     @Schema(description = "방어 성공률 (%)", example = "61.2")
-    private double successRate;
+    private Double successRate;
 
     @Schema(description = "해지 의향 상담 평균 소요 시간(초)", example = "520")
-    private int avgDurationSec;
+    private Integer avgDurationSec;
 
     @Schema(description = "불만 사유별 방어율")
     private List<ComplaintReason> complaintReasons;
@@ -89,6 +91,21 @@ public class ChurnDefenseResponse {
         private int attempts;
         @Schema(description = "성공률 (%)", example = "68.2")
         private double successRate;
+        @Schema(description = "순위")
+        private int rank;
+        @Schema(description = "불만 사유별 분석")
+        private List<ReasonBreakdown> byReason;
+    }
+
+    @Schema(description = "불만 사유별 분석")
+    @Getter @Builder @NoArgsConstructor @AllArgsConstructor
+    public static class ReasonBreakdown {
+        @Schema(description = "불만 사유", example = "요금불만")
+        private String reason;
+        @Schema(description = "시도 건수", example = "3")
+        private int attempts;
+        @Schema(description = "성공률 (%)", example = "100")
+        private double successRate;
     }
 
     // ==================== Factory ====================
@@ -126,11 +143,23 @@ public class ChurnDefenseResponse {
         // 방어 액션별
         List<Document> actionDocs = defense.getList("byAction", Document.class);
         List<ActionDefense> byAction = actionDocs == null ? List.of() :
-                actionDocs.stream().map(d -> ActionDefense.builder()
-                        .action(d.getString("action"))
-                        .attempts(getInt(d, "attempts"))
-                        .successRate(getDouble(d, "successRate"))
-                        .build()).collect(Collectors.toList());
+                actionDocs.stream().map(d -> {
+                    List<Document> brDocs = d.getList("byReason", Document.class);
+                    List<ReasonBreakdown> byReason = brDocs == null ? List.of() :
+                            brDocs.stream().map(r -> ReasonBreakdown.builder()
+                                    .reason(r.getString("reason"))
+                                    .attempts(getInt(r, "attempts"))
+                                    .successRate(getDouble(r, "successRate"))
+                                    .build()).collect(Collectors.toList());
+
+                    return ActionDefense.builder()
+                            .action(d.getString("action"))
+                            .attempts(getInt(d, "attempts"))
+                            .successRate(getDouble(d, "successRate"))
+                            .rank(getInt(d, "rank"))
+                            .byReason(byReason)
+                            .build();
+                }).collect(Collectors.toList());
 
         return ChurnDefenseResponse.builder()
                 .startDate(startDate)
