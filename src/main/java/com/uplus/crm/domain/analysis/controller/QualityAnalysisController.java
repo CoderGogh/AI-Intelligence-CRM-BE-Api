@@ -44,7 +44,10 @@ public class QualityAnalysisController {
             summary = "일별 응대 품질 분석",
             description = """
                 daily_agent_report_snapshot에서 응대 품질 분석 데이터를 조회합니다.
-
+                상담사:
+                - agentId 지정해도 **본인 것만 조회 가능**
+                
+                관리자:
                 - **agentId 지정**: 해당 상담사의 품질 분석 (단건, 204 = 데이터 없음)
                 - **agentId 미지정**: 전체 상담사 품질 분석 (목록)
 
@@ -110,7 +113,11 @@ public class QualityAnalysisController {
             description = """
                 weekly_agent_report_snapshot에서 응대 품질 분석 데이터를 조회합니다.
                 date가 포함되는 주간 스냅샷(startAt <= date <= endAt)을 찾습니다.
-
+                
+                상담사:
+                - agentId 지정해도 **본인 것만 조회 가능**
+                
+                관리자:
                 - **agentId 지정**: 해당 상담사의 품질 분석 (단건, 일별 가중 평균)
                 - **agentId 미지정**: 전체 상담사 품질 분석 (목록)
                 """
@@ -161,7 +168,11 @@ public class QualityAnalysisController {
             description = """
                 monthly_agent_report_snapshot에서 응대 품질 분석 데이터를 조회합니다.
                 date가 포함되는 월간 스냅샷(startAt <= date <= endAt)을 찾습니다.
-
+                
+                상담사:
+                - agentId 지정해도 **본인 것만 조회 가능**
+                
+                관리자:
                 - **agentId 지정**: 해당 상담사의 품질 분석 (단건, 일별 가중 평균)
                 - **agentId 미지정**: 전체 상담사 품질 분석 (목록)
                 """
