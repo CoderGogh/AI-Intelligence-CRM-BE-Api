@@ -3,6 +3,11 @@ package com.uplus.crm.domain.analysis.service;
 import com.uplus.crm.domain.analysis.dto.ChurnDefenseResponse;
 import com.uplus.crm.domain.analysis.dto.CustomerRiskResponse;
 import com.uplus.crm.domain.analysis.dto.KeywordAnalysisResponse;
+import com.uplus.crm.domain.analysis.entity.AnalysisCode;
+import com.uplus.crm.domain.analysis.repository.AnalysisCodeRepository;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
@@ -23,6 +28,8 @@ public class MonthlyReportService {
 
     private final MongoTemplate mongoTemplate;
     private static final String COLLECTION = "monthly_report_snapshot";
+
+    private final AnalysisCodeRepository analysisCodeRepository;
 
     /**
      * 월별 고객 특이사항 조회
@@ -105,15 +112,52 @@ public class MonthlyReportService {
      * @return ChurnDefenseResponse (totalAttempts, successRate, complaintReasons, byCustomerType, byAction)
      */
     public ChurnDefenseResponse getMonthlyChurnDefenseAnalysis(LocalDate date) {
+
         Document snapshot = findSnapshotContaining(date);
-        if (snapshot == null) {
-            log.info("[MonthlyReport] {} 포함 월별 스냅샷 없음 (해지방어)", date);
-            return null;
-        }
+        if (snapshot == null) return null;
 
         ChurnDefenseResponse response = ChurnDefenseResponse.from(snapshot);
-        if (response == null) {
-            log.info("[MonthlyReport] {} 스냅샷에 churnDefenseAnalysis 필드 없음", date);
+
+        if (response != null) {
+            List<AnalysisCode> allCodes = analysisCodeRepository.findAll();
+
+            // 1. 불만 사유용 맵 (displayName 사용)
+            Map<String, String> complaintMap = allCodes.stream()
+                .filter(c -> "complaint_category".equals(c.getClassification()))
+                .collect(Collectors.toMap(AnalysisCode::getCodeName, AnalysisCode::getDisplayName, (a, b) -> b));
+
+            // 2. 방어 액션용 맵 (displayName 사용)
+            Map<String, String> defenseMap = allCodes.stream()
+                .filter(c -> "defense_category".equals(c.getClassification()))
+                .collect(Collectors.toMap(AnalysisCode::getCodeName, AnalysisCode::getDisplayName, (a, b) -> b));
+
+            // --- DTO 치환 로직 ---
+
+            // A. 불만 사유
+            if (response.getComplaintReasons() != null) {
+                response.getComplaintReasons().forEach(dto ->
+                    dto.setReason(complaintMap.getOrDefault(dto.getReason(), dto.getReason())));
+            }
+
+            // B. 고객 유형별 주요 불만 사유
+            if (response.getByCustomerType() != null) {
+                response.getByCustomerType().forEach(dto ->
+                    dto.setMainComplaintReason(complaintMap.getOrDefault(dto.getMainComplaintReason(), dto.getMainComplaintReason())));
+            }
+
+            // C. 방어 액션
+            if (response.getByAction() != null) {
+                response.getByAction().forEach(actionDto -> {
+                    // 방어 액션명 매핑
+                    actionDto.setAction(defenseMap.getOrDefault(actionDto.getAction(), actionDto.getAction()));
+
+                    // 액션 하위 상세 사유 매핑
+                    if (actionDto.getByReason() != null) {
+                        actionDto.getByReason().forEach(reasonDto ->
+                            reasonDto.setReason(complaintMap.getOrDefault(reasonDto.getReason(), reasonDto.getReason())));
+                    }
+                });
+            }
         }
         return response;
     }

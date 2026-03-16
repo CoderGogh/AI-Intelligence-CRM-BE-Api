@@ -2,6 +2,7 @@ package com.uplus.crm.domain.analysis.service;
 
 import com.uplus.crm.domain.analysis.dto.ChurnDefenseResponse;
 import com.uplus.crm.domain.analysis.dto.CustomerRiskResponse;
+import com.uplus.crm.domain.analysis.repository.AnalysisCodeRepository;
 import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,9 @@ class MonthlyReportServiceExtTest {
 
     @Mock MongoTemplate mongoTemplate;
     @InjectMocks MonthlyReportService service;
+
+    @Mock
+    private AnalysisCodeRepository analysisCodeRepository;
 
     private static final LocalDate DATE = LocalDate.of(2025, 1, 15);
 
@@ -109,6 +113,8 @@ class MonthlyReportServiceExtTest {
 
         given(mongoTemplate.findOne(any(Query.class), eq(Document.class), eq("monthly_report_snapshot")))
                 .willReturn(snapshot);
+
+        given(analysisCodeRepository.findAll()).willReturn(List.of());
 
         // when
         ChurnDefenseResponse result = service.getMonthlyChurnDefenseAnalysis(DATE);

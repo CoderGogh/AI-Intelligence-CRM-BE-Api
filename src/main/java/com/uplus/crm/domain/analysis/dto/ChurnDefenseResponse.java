@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.bson.Document;
 
 import java.time.LocalDateTime;
@@ -55,7 +56,7 @@ public class ChurnDefenseResponse {
     // ==================== 내부 DTO ====================
 
     @Schema(description = "불만 사유별 방어율")
-    @Getter @Builder @NoArgsConstructor @AllArgsConstructor
+    @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
     public static class ComplaintReason {
         @Schema(description = "사유", example = "요금 불만")
         private String reason;
@@ -70,7 +71,7 @@ public class ChurnDefenseResponse {
     }
 
     @Schema(description = "고객 유형별 해지 분석")
-    @Getter @Builder @NoArgsConstructor @AllArgsConstructor
+    @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
     public static class CustomerTypeDefense {
         @Schema(description = "고객 유형 (연령+성별)", example = "20대 남성")
         private String type;
@@ -83,7 +84,7 @@ public class ChurnDefenseResponse {
     }
 
     @Schema(description = "상담사 액션별 현황")
-    @Getter @Builder @NoArgsConstructor @AllArgsConstructor
+    @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
     public static class ActionDefense {
         @Schema(description = "방어 액션", example = "요금할인")
         private String action;
@@ -98,7 +99,7 @@ public class ChurnDefenseResponse {
     }
 
     @Schema(description = "불만 사유별 분석")
-    @Getter @Builder @NoArgsConstructor @AllArgsConstructor
+    @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
     public static class ReasonBreakdown {
         @Schema(description = "불만 사유", example = "요금불만")
         private String reason;
