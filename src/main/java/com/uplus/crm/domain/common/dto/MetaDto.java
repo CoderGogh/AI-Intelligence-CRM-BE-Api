@@ -56,10 +56,11 @@ public class MetaDto {
     }
   }
 
-  public record AnalysisCodeDto(String codeName, String classification, String description) {
+  public record AnalysisCodeDto(String codeName, String displayName, String classification, String description) {
     public static AnalysisCodeDto from(AnalysisCode c) {
       return new AnalysisCodeDto(
           c.getCodeName(),
+          c.getDisplayName(),
           c.getClassification(),
           c.getDescription()
       );
