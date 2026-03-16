@@ -29,6 +29,8 @@ public abstract class BaseAgentSnapshot {
   // 고객 만족도 분석 데이터
   private CustomerSatisfactionAnalysis customerSatisfactionAnalysis;
 
+  // 응대 품질 분석 데이터
+  private QualityAnalysis qualityAnalysis;
 
   // --- 내부 객체 구조  ---
   @Getter
@@ -44,5 +46,10 @@ public abstract class BaseAgentSnapshot {
     private Double responseRate;
     private Integer surveyTotalCount;
     private Integer surveyResponseCount;
+  }
+
+  @Getter
+  public static class QualityAnalysis {
+    private Double totalScore;
   }
 }

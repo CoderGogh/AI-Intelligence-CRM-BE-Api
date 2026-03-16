@@ -17,6 +17,8 @@ public enum ErrorCode {
     INVALID_SELECTION_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 선정 상태값입니다."),
     INVALID_SORT_FIELD(HttpStatus.BAD_REQUEST, "정렬할 수 없는 필드명입니다. (createdAt, score 등 사용 가능)"),
     NOT_A_CANDIDATE(HttpStatus.BAD_REQUEST, "우수 사례 후보가 아닌 상담입니다."),
+    INVALID_PERIOD(HttpStatus.BAD_REQUEST, "지원하지 않는 조회 주기입니다. (daily/weekly/monthly)"),
+
     // 401 Unauthorized
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다."),
     INVALID_CURRENT_PASSWORD(HttpStatus.UNAUTHORIZED, "현재 비밀번호가 일치하지 않습니다."),

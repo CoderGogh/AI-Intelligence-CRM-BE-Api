@@ -13,6 +13,7 @@ import org.bson.Document;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
 public class KeywordRankingResponse {
 
     private String date;
@@ -60,7 +61,8 @@ public class KeywordRankingResponse {
             Document kwSummary = snapshot.get("keywordSummary", Document.class);
             topDocs = kwSummary != null
                     ? kwSummary.getList("topKeywords", Document.class) : List.of();
-            newDocs = List.of();
+            newDocs = kwSummary != null
+                    ? kwSummary.getList("newKeywords", Document.class) : List.of();
         }
 
         List<TopKeyword> topKeywords = topDocs == null ? List.of() :

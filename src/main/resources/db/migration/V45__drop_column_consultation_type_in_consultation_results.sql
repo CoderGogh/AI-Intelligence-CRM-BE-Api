@@ -1,0 +1,1 @@
+ALTER TABLE consultation_results DROP COLUMN consultation_type;
