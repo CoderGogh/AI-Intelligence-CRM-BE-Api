@@ -11,6 +11,7 @@ import com.uplus.crm.domain.analysis.dto.agent.CategoryRankingDto;
 import com.uplus.crm.domain.analysis.service.agent.AgentReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -46,6 +47,8 @@ public class AgentReportController {
           "date 미지정 시 전일(어제) 기준으로 조회합니다."
   )
   @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "상담사 성과 조회 성공",
+          content = @Content(schema = @Schema(implementation = AgentMetricsResponse.class))),
       @ApiResponse(responseCode = "400", description = "상담사 ID 누락 (관리자 조회 시 필수)",
           content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
       @ApiResponse(responseCode = "401", description = "인증 실패 (JWT 토큰 없음/만료)",
@@ -89,6 +92,8 @@ public class AgentReportController {
           "date 미지정 시 전일(어제) 기준으로 조회합니다."
   )
   @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "상담사 카테고리 순위 조회 성공",
+          content = @Content(array = @ArraySchema(schema = @Schema(implementation = CategoryRankingDto.class)))),
       @ApiResponse(responseCode = "400", description = "상담사 ID 누락 (관리자 조회 시 필수)",
           content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
       @ApiResponse(responseCode = "401", description = "인증 실패 (JWT 토큰 없음/만료)",
@@ -133,6 +138,8 @@ public class AgentReportController {
           "date 미지정 시 전일(어제) 기준으로 조회합니다."
   )
   @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "고객 만족도 조회 성공",
+          content = @Content(schema = @Schema(implementation = AgentSatisfactionResponse.class))),
       @ApiResponse(responseCode = "400", description = "상담사 ID 누락 (관리자 조회 시 필수)",
           content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
       @ApiResponse(responseCode = "401", description = "인증 실패 (JWT 토큰 없음/만료)",
