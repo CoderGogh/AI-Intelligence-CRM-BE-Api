@@ -1,6 +1,7 @@
 package com.uplus.crm.domain.common.dto;
 
 import com.uplus.crm.domain.account.entity.Employee;
+import com.uplus.crm.domain.common.entity.AnalysisCode;
 import com.uplus.crm.domain.common.entity.CustomerGrade;
 import com.uplus.crm.domain.common.entity.ProductAdditional;
 import com.uplus.crm.domain.common.entity.ProductHome;
@@ -52,6 +53,17 @@ public class MetaDto {
   public record RiskLevelDto(String levelCode, String levelName) {
     public static RiskLevelDto from(RiskLevelPolicy r) {
       return new RiskLevelDto(r.getLevelCode(), r.getLevelName());
+    }
+  }
+
+  public record AnalysisCodeDto(String codeName, String displayName, String classification, String description) {
+    public static AnalysisCodeDto from(AnalysisCode c) {
+      return new AnalysisCodeDto(
+          c.getCodeName(),
+          c.getDisplayName(),
+          c.getClassification(),
+          c.getDescription()
+      );
     }
   }
 }

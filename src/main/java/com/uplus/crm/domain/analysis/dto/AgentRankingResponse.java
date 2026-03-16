@@ -51,7 +51,7 @@ public class AgentRankingResponse {
         @Schema(description = "평균 고객 만족도 (0~5)", example = "4.8")
         private Double avgSatisfiedScore;
 
-        @Schema(description = "응대 품질 점수 (추후 구현)", example = "null")
+        @Schema(description = "응대 품질 점수 (0~5)", example = "3.2")
         private Double qualityScore;
     }
 }
