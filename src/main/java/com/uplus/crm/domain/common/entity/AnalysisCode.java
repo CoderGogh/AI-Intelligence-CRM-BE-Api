@@ -25,6 +25,9 @@ public class AnalysisCode {
   @Column(name = "code_name", length = 20, nullable = false)
   private String codeName;
 
+  @Column(name = "display_name", length = 30)
+  private String displayName;
+
   @Column(
       name = "classification",
       nullable = false,
