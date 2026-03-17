@@ -44,7 +44,7 @@ public class AgentReportController {
   @Operation(
       summary = "상담사 성과 조회",
       description = "특정 기간(daily, weekly, monthly) 동안 상담사의 상담 건수, 만족도 등을 조회합니다 " +
-          "date 미지정 시 전일(어제) 기준으로 조회합니다."
+          "date 미지정 시 전일(어제)/전주/전월 기준으로 조회합니다."
   )
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "상담사 성과 조회 성공",
@@ -77,9 +77,8 @@ public class AgentReportController {
       finalEmpId = userDetails.getEmpId();
     }
 
-
-    LocalDate targetDate = (date != null) ? date : LocalDate.now().minusDays(1);
-
+    LocalDate targetDate = getDefaultTargetDate(period, date);
+    
     return ResponseEntity.ok(agentReportService.getMetrics(period, finalEmpId, targetDate));
   }
 
@@ -90,7 +89,7 @@ public class AgentReportController {
   @Operation(
       summary = "상담사 카테고리 순위 조회",
       description = "특정 기간(daily, weekly, monthly) 동안 상담사가 처리한 상담 카테고리 순위를 조회합니다. " +
-          "date 미지정 시 전일(어제) 기준으로 조회합니다."
+          "date 미지정 시 전일(어제)/전주/전월 기준으로 조회합니다."
   )
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "상담사 카테고리 순위 조회 성공",
@@ -124,8 +123,7 @@ public class AgentReportController {
       finalEmpId = userDetails.getEmpId();
     }
 
-
-    LocalDate targetDate = (date != null) ? date : LocalDate.now().minusDays(1);
+    LocalDate targetDate = getDefaultTargetDate(period, date);
 
     return ResponseEntity.ok(agentReportService.getCategories(period, finalEmpId, targetDate));
   }
@@ -137,7 +135,7 @@ public class AgentReportController {
   @Operation(
       summary = "고객 만족도 조회",
       description = "특정 기간(daily, weekly, monthly) 동안의 고객 만족도를 조회합니다. " +
-          "date 미지정 시 전일(어제) 기준으로 조회합니다."
+          "date 미지정 시 전일(어제)/전주/전월 기준으로 조회합니다."
   )
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "고객 만족도 조회 성공",
@@ -170,8 +168,19 @@ public class AgentReportController {
       finalEmpId = userDetails.getEmpId();
     }
 
-    LocalDate targetDate = (date != null) ? date : LocalDate.now().minusDays(1);
+    LocalDate targetDate = getDefaultTargetDate(period, date);
 
     return ResponseEntity.ok(agentReportService.getSatisfaction(period, finalEmpId, targetDate));
   }
+
+  private LocalDate getDefaultTargetDate(String period, LocalDate date) {
+    if (date != null) return date;
+
+    return switch (period.toLowerCase()) {
+      case "weekly" -> LocalDate.now().minusWeeks(1);  // 1주일 전 (지난주 데이터 포함 날짜)
+      case "monthly" -> LocalDate.now().minusMonths(1); // 1개월 전 (지난달 데이터 포함 날짜)
+      default -> LocalDate.now().minusDays(1);         // 기본값: 어제
+    };
+  }
+
 }
