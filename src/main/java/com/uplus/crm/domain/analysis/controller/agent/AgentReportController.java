@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "agent_report", description = "상담사 개인 분석 리포트 조회 API")
+@Tag(name = "agent_report", description = "상담사 개인 분석 리포트 조회 API (상담사/관리자 공용)")
 @RestController
 @RequestMapping("/api/analysis/agent")
 @RequiredArgsConstructor
@@ -62,6 +62,7 @@ public class AgentReportController {
       @PathVariable String period,
       @Parameter(description = "조회 기준 날짜 (ISO 형식: YYYY-MM-DD)", example = "2025-01-15")
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+      @Parameter(description = "조회 대상 상담사 ID. **[관리자]** 필수 입력. **[상담사]** 본인 ID 외 입력 불가 (입력해도 본인 것만 조회됨)", example = "11")
       @RequestParam(required = false) Integer targetEmpId, // 관리자가 선택한 상담사 ID
       @AuthenticationPrincipal CustomUserDetails userDetails) { // 로그인 정보에서 empId 추출
 
@@ -107,6 +108,7 @@ public class AgentReportController {
       @PathVariable String period,
       @Parameter(description = "조회 기준 날짜 (ISO 형식: YYYY-MM-DD)", example = "2025-01-15")
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+      @Parameter(description = "조회 대상 상담사 ID. **[관리자]** 필수 입력. **[상담사]** 본인 ID 외 입력 불가 (입력해도 본인 것만 조회됨)", example = "11")
       @RequestParam(required = false) Integer targetEmpId, // 관리자가 선택한 상담사 ID
       @AuthenticationPrincipal CustomUserDetails userDetails) {
 
@@ -153,6 +155,7 @@ public class AgentReportController {
       @PathVariable String period,
       @Parameter(description = "조회 기준 날짜 (ISO 형식: YYYY-MM-DD)", example = "2025-01-15")
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+      @Parameter(description = "조회 대상 상담사 ID. **[관리자]** 필수 입력. **[상담사]** 본인 ID 외 입력 불가 (입력해도 본인 것만 조회됨)", example = "11")
       @RequestParam(required = false) Integer targetEmpId, // 관리자가 선택한 상담사 ID
       @AuthenticationPrincipal CustomUserDetails userDetails) {
 
