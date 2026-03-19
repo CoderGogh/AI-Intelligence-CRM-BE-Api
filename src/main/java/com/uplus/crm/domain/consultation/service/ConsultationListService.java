@@ -19,6 +19,7 @@ public class ConsultationListService {
             String keyword,
             String channel,
             String categoryCode,
+            String categoryLarge,
             String summaryStatus,
             String resultStatus,
             int page,
@@ -38,6 +39,7 @@ public class ConsultationListService {
                 keyword,
                 dbChannel,
                 categoryCode,
+                categoryLarge,
                 dbSummaryStatus,
                 dbResultStatus
         );
@@ -49,6 +51,7 @@ public class ConsultationListService {
                         keyword,
                         dbChannel,
                         categoryCode,
+                        categoryLarge,
                         dbSummaryStatus,
                         dbResultStatus,
                         offset,

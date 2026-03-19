@@ -141,7 +141,7 @@ class ConsultationControllerTest {
     void getConsultationList_200() throws Exception {
         mockAgentAuth();
         // 서비스 응답 Mocking
-        given(consultationListService.getConsultationList(any(), any(), any(), any(), any(), anyInt(), anyInt()))
+        given(consultationListService.getConsultationList(any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
                 .willReturn(null);
 
         mockMvc.perform(get("/consultation/list")
