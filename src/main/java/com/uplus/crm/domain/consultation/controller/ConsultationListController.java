@@ -31,15 +31,17 @@ public class ConsultationListController {
         @Parameter(name = "categoryCode", description = "상담 카테고리 코드"),
         @Parameter(name = "summaryStatus", description = "AI 요약 상태 (입력 가능 값: 요약완료, 요청중, 실패)", example = "요약완료"),
         @Parameter(name = "resultStatus", description = "처리 상태 (입력 가능 값: 처리중, 완료, 미완료, 요청중)", example = "완료"),
+        @Parameter(name = "categoryLarge", description = "상담 대분류 카테고리", example = "요금"),
         @Parameter(name = "page", description = "페이지 번호 (0부터 시작)", example = "0"),
         @Parameter(name = "size", description = "페이지당 데이터 개수", example = "10")
     })
-    
+
     @GetMapping("/list")
     public ApiResponse<ConsultationListResponseDto> getConsultationList(
             @RequestParam(name = "keyword", required = false, defaultValue = "") String keyword,
             @RequestParam(name = "channel", required = false, defaultValue = "") String channel,
             @RequestParam(name = "categoryCode", required = false, defaultValue = "") String categoryCode,
+            @RequestParam(name = "categoryLarge", required = false, defaultValue = "") String categoryLarge,
             @RequestParam(name = "summaryStatus", required = false, defaultValue = "") String summaryStatus,
             @RequestParam(name = "resultStatus", required = false, defaultValue = "") String resultStatus,
             @RequestParam(name = "page", defaultValue = "0") int page,
@@ -50,6 +52,7 @@ public class ConsultationListController {
                         keyword,
                         channel,
                         categoryCode,
+                        categoryLarge,
                         summaryStatus,
                         resultStatus,
                         page,

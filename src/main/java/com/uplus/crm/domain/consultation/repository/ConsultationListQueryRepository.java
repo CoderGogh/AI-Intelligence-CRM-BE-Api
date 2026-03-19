@@ -18,6 +18,7 @@ public class ConsultationListQueryRepository {
             String keyword,
             String channel,
             String categoryCode,
+            String categoryLarge,
             String summaryStatus,
             String resultStatus,
             int offset,
@@ -91,7 +92,7 @@ public class ConsultationListQueryRepository {
         StringBuilder dynamicSql = new StringBuilder(sql);
         List<Object> params = new ArrayList<>();
 
-        applyFilters(dynamicSql, params, keyword, channel, categoryCode, summaryStatus, resultStatus);
+        applyFilters(dynamicSql, params, keyword, channel, categoryCode, categoryLarge, summaryStatus, resultStatus);
 
         dynamicSql.append(" ORDER BY cr.created_at DESC LIMIT ? OFFSET ? ");
         params.add(size);
@@ -108,13 +109,14 @@ public class ConsultationListQueryRepository {
     }
 
     public long countConsultationList(
-            String keyword, String channel, String categoryCode, String summaryStatus, String resultStatus
+            String keyword, String channel, String categoryCode, String categoryLarge, String summaryStatus, String resultStatus
     ) {
         // COUNT 쿼리에서도 필터링을 위해 JOIN이 반드시 필요합니다.
         String sql = """
                 SELECT COUNT(*)
                 FROM consultation_results cr
                 JOIN customers c ON cr.customer_id = c.customer_id
+                LEFT JOIN consultation_category_policy ccp ON cr.category_code = ccp.category_code
                 LEFT JOIN (
                     SELECT t1.consult_id, t1.status
                     FROM summary_event_status t1
@@ -139,7 +141,7 @@ public class ConsultationListQueryRepository {
         StringBuilder dynamicSql = new StringBuilder(sql);
         List<Object> params = new ArrayList<>();
 
-        applyFilters(dynamicSql, params, keyword, channel, categoryCode, summaryStatus, resultStatus);
+        applyFilters(dynamicSql, params, keyword, channel, categoryCode, categoryLarge, summaryStatus, resultStatus);
 
         Query query = entityManager.createNativeQuery(dynamicSql.toString());
         for (int i = 0; i < params.size(); i++) {
@@ -149,7 +151,7 @@ public class ConsultationListQueryRepository {
         return ((Number) query.getSingleResult()).longValue();
     }
 
-    private void applyFilters(StringBuilder sql, List<Object> params, String keyword, String channel, String categoryCode, String summaryStatus, String resultStatus) {
+    private void applyFilters(StringBuilder sql, List<Object> params, String keyword, String channel, String categoryCode, String categoryLarge, String summaryStatus, String resultStatus) {
         if (keyword != null && !keyword.isBlank()) {
             sql.append(" AND (c.name LIKE ? OR c.phone LIKE ? OR CAST(cr.consult_id AS CHAR) LIKE ?) ");
             String k = "%" + keyword + "%";
@@ -162,6 +164,10 @@ public class ConsultationListQueryRepository {
         if (categoryCode != null && !categoryCode.isBlank()) {
             sql.append(" AND cr.category_code = ? ");
             params.add(categoryCode);
+        }
+        if (categoryLarge != null && !categoryLarge.isBlank()) {
+            sql.append(" AND ccp.large_category = ? ");
+            params.add(categoryLarge);
         }
         if (summaryStatus != null && !summaryStatus.isBlank()) {
             sql.append(" AND ses.status = ? ");
