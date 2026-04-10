@@ -233,5 +233,6 @@ http://localhost:8080/api/swagger-ui/index.html
 
 | 레포 | 역할 |
 | :--- | :--- |
+| [CoderGogh/AI-Intelligence-CRM-FE](https://github.com/CoderGogh/AI-Intelligence-CRM-FE) | Frontend 대시보드 — React 19 + TanStack Start · `:3000` |
 | [CoderGogh/AI-Intelligence-CRM-BE-Api](https://github.com/CoderGogh/AI-Intelligence-CRM-BE-Api) | 이 레포 — API 서버, 인증, 실시간 조회·검색, 인프라 Docker 구성 |
 | [CoderGogh/AI-Intelligence-CRM-BE-Batch](https://github.com/CoderGogh/AI-Intelligence-CRM-BE-Batch) | Batch 서버 — Gemini AI 분석, 대용량 배치 처리, 검색 인덱싱 |
